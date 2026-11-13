@@ -8,16 +8,19 @@ import type {
   GamePhase,
   IslandData,
   IslandId,
-  QualityMode,
   ShipTelemetry,
 } from './types/portfolio';
-import { playCannonHit, playStartHorn, playTone } from './utils/sound';
+import {
+  playCannonHit,
+  playHullBump,
+  playStartHorn,
+  playTone,
+} from './utils/sound';
 
 const TOTAL_TARGETS = 4;
 
 export function App() {
   const [phase, setPhase] = useState<GamePhase>('title');
-  const [quality, setQuality] = useState<QualityMode>('canaima');
   const [sfxEnabled, setSfxEnabled] = useState(false);
 
   const [isFirstPerson, setIsFirstPerson] = useState(false);
@@ -40,6 +43,7 @@ export function App() {
     heading: 0,
     speed: 0,
     steerAngle: 0,
+    windAlignment: 0,
   });
 
   const mobileInputRef = useRef({ forward: 0, turn: 0 });
@@ -62,20 +66,18 @@ export function App() {
     }));
   };
 
-  const handleToggleQuality = () => {
-    playTone(sfxEnabled, 440, 0.06);
-    setQuality((prev) => (prev === 'canaima' ? 'high' : 'canaima'));
-  };
-
   const handleToggleSfx = () => {
     const next = !sfxEnabled;
     setSfxEnabled(next);
     if (next) playTone(true, 587, 0.08);
   };
 
+  const handleHullCollision = useCallback(() => {
+    playHullBump(sfxEnabled);
+  }, [sfxEnabled]);
+
   const handleFastTravel = (island: IslandData) => {
     playTone(sfxEnabled, 480, 0.1);
-    // Colocamos el barco frente a la costa sur de la isla mirando hacia ella
     shipTelemetryRef.current.x = island.position[0];
     shipTelemetryRef.current.z = island.position[1] + (island.dockRadius - 3);
     shipTelemetryRef.current.heading = 0;
@@ -107,7 +109,7 @@ export function App() {
     });
   };
 
-  // Atajos de teclado globales [E] para desembarcar y [ESC] para cerrar modales
+  // Atajos globales [E] para desembarcar y [ESC] para cerrar modales
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.code === 'Escape') {
@@ -133,10 +135,9 @@ export function App() {
   }, [phase, nearbyIsland, activeModalIsland, mapShipPos, sfxEnabled]);
 
   return (
-    <div className="relative h-screen w-screen overflow-hidden bg-[#120d1d]">
+    <div className="relative h-screen w-screen overflow-hidden bg-[#2b1e3e]">
       <WorldScene
         phase={phase}
-        quality={quality}
         isFirstPerson={isFirstPerson}
         cameraModeRequest={cameraModeRequest}
         onZoomModeChange={setIsFirstPerson}
@@ -145,23 +146,18 @@ export function App() {
         nearbyIsland={nearbyIsland}
         activeModalIsland={activeModalIsland}
         onNearbyIslandChange={setNearbyIsland}
+        onHullCollision={handleHullCollision}
         mobileInputRef={mobileInputRef}
         minigameActive={minigameActive}
         hitTargets={hitTargets}
         onHitTarget={handleHitTarget}
       />
 
-      {phase === 'title' && (
-        <TitleOverlay
-          quality={quality}
-          onToggleQuality={handleToggleQuality}
-          onStart={handleStart}
-        />
-      )}
+      {phase === 'title' && <TitleOverlay onStart={handleStart} />}
 
       {phase === 'boarding' && (
         <div className="pointer-events-none absolute inset-x-0 bottom-8 z-20 text-center">
-          <span className="rounded-full border border-amber-300/30 bg-slate-950/75 px-5 py-2 font-mono text-xs tracking-widest text-amber-200">
+          <span className="rounded-full border border-amber-300/35 bg-slate-950/75 px-5 py-2 font-mono text-xs tracking-widest text-amber-200">
             ABORDANDO EL NAVÍO...
           </span>
         </div>
@@ -172,8 +168,6 @@ export function App() {
           shipTelemetryRef={shipTelemetryRef}
           isFirstPerson={isFirstPerson}
           onToggleCamera={handleToggleCamera}
-          quality={quality}
-          onToggleQuality={handleToggleQuality}
           sfxEnabled={sfxEnabled}
           onToggleSfx={handleToggleSfx}
           onOpenMap={() => {

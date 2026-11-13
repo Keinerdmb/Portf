@@ -1,13 +1,12 @@
 import { useEffect, useRef } from 'react';
 import { ISLANDS } from '../../data/islands';
-import type { IslandId, QualityMode, ShipTelemetry } from '../../types/portfolio';
+import type { IslandId, ShipTelemetry } from '../../types/portfolio';
+import { getWindState } from '../../utils/oceanMath';
 
 interface CompassHudProps {
   shipTelemetryRef: React.RefObject<ShipTelemetry>;
   isFirstPerson: boolean;
   onToggleCamera: () => void;
-  quality: QualityMode;
-  onToggleQuality: () => void;
   sfxEnabled: boolean;
   onToggleSfx: () => void;
   onOpenMap: () => void;
@@ -24,8 +23,6 @@ export function CompassHud({
   shipTelemetryRef,
   isFirstPerson,
   onToggleCamera,
-  quality,
-  onToggleQuality,
   sfxEnabled,
   onToggleSfx,
   onOpenMap,
@@ -38,15 +35,21 @@ export function CompassHud({
   mobileInputRef,
 }: CompassHudProps) {
   const headingTextRef = useRef<HTMLSpanElement>(null);
+  const windArrowRef = useRef<HTMLSpanElement>(null);
+  const windKnotsRef = useRef<HTMLSpanElement>(null);
   const markerRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const startTimeRef = useRef<number | null>(null);
 
-  // Actualizamos la brújula directo en el DOM vía rAF para no re-renderizar React 60 veces/seg
+  // Actualizamos brújula y viento directo en DOM vía rAF para cero re-renders
   useEffect(() => {
     let rafId = 0;
 
-    const tick = () => {
+    const tick = (now: number) => {
+      if (startTimeRef.current === null) startTimeRef.current = now;
+      const elapsedSec = (now - startTimeRef.current) / 1000;
       const ship = shipTelemetryRef.current;
-      // Convertimos heading (0 = Norte) a grados [0, 360)
+      const wind = getWindState(elapsedSec);
+
       const deg = ((-ship.heading * 180) / Math.PI) % 360;
       const normalizedDeg = (deg + 360) % 360;
 
@@ -70,13 +73,22 @@ export function CompassHud({
         headingTextRef.current.textContent = `${cardinal} ${Math.round(normalizedDeg)}°`;
       }
 
-      // Posicionamos el marcador de cada isla en la barra horizontal [-90°, +90°] respecto a donde miras
+      if (windArrowRef.current) {
+        // Ángulo relativo del viento respecto a la proa del barco
+        const relWindDeg = ((ship.heading - wind.angle) * 180) / Math.PI;
+        windArrowRef.current.style.transform = `rotate(${relWindDeg}deg)`;
+      }
+
+      if (windKnotsRef.current) {
+        const boost = ship.windAlignment > 0.35 ? ' · VIENTO A FAVOR' : '';
+        windKnotsRef.current.textContent = `${Math.round(wind.knots)} KT${boost}`;
+      }
+
       ISLANDS.forEach((island, idx) => {
         const el = markerRefs.current[idx];
         if (!el) return;
         const dx = island.position[0] - ship.x;
         const dz = island.position[1] - ship.z;
-        // Ángulo hacia la isla (0 = -Z Norte, +PI/2 = +X Este)
         const angleToIsland = Math.atan2(dx, -dz);
         const shipAngle = -ship.heading;
         let diff = angleToIsland - shipAngle;
@@ -101,17 +113,28 @@ export function CompassHud({
 
   return (
     <div className="pointer-events-none absolute inset-0 z-20 flex flex-col justify-between p-4 sm:p-6">
-      {/* Barra superior: Brújula + Botones rápidos */}
+      {/* Barra superior: Viento + Brújula estilo cinta náutica + Acciones */}
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="hidden font-mono text-xs text-amber-200/80 sm:block">
-          CAPITÁN KEINER
+        {/* Indicador de Viento */}
+        <div className="hidden items-center gap-2 rounded-full border border-amber-100/25 bg-slate-950/55 px-3 py-1.5 backdrop-blur-[2px] sm:flex">
+          <span
+            ref={windArrowRef}
+            className="inline-block font-mono text-sm leading-none text-amber-300"
+          >
+            ↑
+          </span>
+          <span
+            ref={windKnotsRef}
+            className="font-mono text-[11px] tracking-wider text-amber-100/90"
+          >
+            11 KT
+          </span>
         </div>
 
-        {/* Brújula minimalista central */}
+        {/* Brújula central limpia estilo cinta de la referencia */}
         <div className="mx-auto flex w-full max-w-md flex-col items-center gap-1">
-          <div className="relative h-7 w-full overflow-hidden rounded-full border border-white/15 bg-slate-950/65 px-3">
-            {/* Línea central de mira */}
-            <div className="absolute top-0 bottom-0 left-1/2 w-0.5 -translate-x-1/2 bg-amber-300/80" />
+          <div className="relative h-7 w-full overflow-hidden rounded-full border border-amber-100/35 bg-slate-950/55 px-3">
+            <div className="absolute top-0 bottom-0 left-1/2 w-0.5 -translate-x-1/2 bg-amber-300/90" />
 
             {ISLANDS.map((island, idx) => (
               <div
@@ -119,10 +142,10 @@ export function CompassHud({
                 ref={(el) => {
                   markerRefs.current[idx] = el;
                 }}
-                className="absolute top-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center gap-1"
+                className="absolute top-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center"
               >
                 <span
-                  className="h-2.5 w-2.5 rotate-45 border border-white/60"
+                  className="h-2.5 w-2.5 rotate-45 border border-white/80"
                   style={{ backgroundColor: island.accentColor }}
                 />
               </div>
@@ -130,7 +153,7 @@ export function CompassHud({
           </div>
           <span
             ref={headingTextRef}
-            className="font-mono text-[11px] tracking-wider text-amber-200/90"
+            className="font-mono text-[11px] tracking-widest text-amber-100 drop-shadow"
           >
             N 0°
           </span>
@@ -141,36 +164,28 @@ export function CompassHud({
           <button
             type="button"
             onClick={onOpenMap}
-            className="cursor-pointer rounded border border-amber-400/50 bg-slate-950/75 px-3 py-1.5 font-mono text-xs text-amber-300 transition hover:bg-amber-400 hover:text-slate-950"
+            className="cursor-pointer rounded border border-amber-300/50 bg-slate-950/65 px-3 py-1.5 font-mono text-xs text-amber-200 transition hover:bg-amber-300 hover:text-slate-950"
           >
             MAPA
           </button>
           <button
             type="button"
             onClick={onToggleCamera}
-            className="cursor-pointer rounded border border-white/20 bg-slate-950/75 px-3 py-1.5 font-mono text-xs text-slate-200 transition hover:border-sky-400 hover:text-sky-300"
+            className="cursor-pointer rounded border border-white/25 bg-slate-950/65 px-3 py-1.5 font-mono text-xs text-slate-100 transition hover:border-amber-300 hover:text-amber-200"
           >
             {isFirstPerson ? '1RA PERSONA' : '3RA PERSONA'}
           </button>
           <button
             type="button"
-            onClick={onToggleQuality}
-            className="cursor-pointer rounded border border-white/20 bg-slate-950/75 px-2.5 py-1.5 font-mono text-xs text-slate-300 transition hover:border-emerald-400 hover:text-emerald-300"
-            title="Cambiar modo de rendimiento gráfico"
-          >
-            {quality === 'canaima' ? 'CANAIMA' : 'ALTO'}
-          </button>
-          <button
-            type="button"
             onClick={onToggleSfx}
-            className="cursor-pointer rounded border border-white/20 bg-slate-950/75 px-2.5 py-1.5 font-mono text-xs text-slate-300 transition hover:border-white/50"
+            className="cursor-pointer rounded border border-white/25 bg-slate-950/65 px-2.5 py-1.5 font-mono text-xs text-slate-200 transition hover:border-white/60"
           >
             SFX: {sfxEnabled ? 'ON' : 'OFF'}
           </button>
         </div>
       </div>
 
-      {/* Prompt central cuando el mini-juego está activo o cuando estás cerca de una isla */}
+      {/* Centro inferior: aviso de isla / mini-juego */}
       <div className="flex flex-col items-center gap-3">
         {minigameActive && (
           <div className="pointer-events-auto flex items-center gap-4 rounded-lg border border-rose-400/50 bg-slate-950/85 px-5 py-2.5">
@@ -191,19 +206,23 @@ export function CompassHud({
           <button
             type="button"
             onClick={() => onOpenIsland(activeNearby.id)}
-            className="pointer-events-auto cursor-pointer rounded-lg border-2 border-amber-300 bg-slate-950/85 px-6 py-3 font-mono text-xs font-semibold tracking-wider text-amber-200 shadow-[0_0_25px_rgba(251,191,36,0.3)] transition hover:scale-105 hover:bg-amber-400 hover:text-slate-950 sm:text-sm"
+            className="pointer-events-auto cursor-pointer rounded-lg border-2 border-amber-300 bg-slate-950/80 px-6 py-3 font-mono text-xs font-semibold tracking-wider text-amber-200 shadow-[0_0_25px_rgba(251,191,36,0.3)] transition hover:scale-105 hover:bg-amber-300 hover:text-slate-950 sm:text-sm"
           >
             [E] DESEMBARCAR EN {activeNearby.name}
           </button>
         )}
 
-        {/* Pie: controles en desktop + pad táctil compacto en móvil */}
+        {/* Pie: controles discretos en la esquina derecha como la imagen de referencia */}
         <div className="flex w-full items-end justify-between gap-4">
-          <div className="hidden rounded border border-white/10 bg-slate-950/55 px-3 py-2 font-mono text-[11px] text-slate-300 sm:block">
-            [WASD / FLECHAS] TIMÓN · [RUEDA] ZOOM 1RA ↔ 3RA · [E] ENTRAR A ISLA
+          <div className="hidden font-mono text-[11px] text-amber-50/85 drop-shadow sm:block">
+            [WASD / FLECHAS] TIMÓN · [E] DESEMBARCAR
           </div>
 
-          {/* Controles táctiles para móvil / mouse */}
+          <div className="hidden font-display text-xs tracking-wider text-amber-50/90 drop-shadow sm:block">
+            [SCROLL: 1ST / 3RD PERSON]
+          </div>
+
+          {/* Controles táctiles en móvil */}
           <div className="pointer-events-auto ml-auto flex items-center gap-1.5 sm:hidden">
             <button
               type="button"

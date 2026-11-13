@@ -53,3 +53,8 @@ export function playCannonHit(enabled: boolean): void {
   playTone(true, 130, 0.12, 'sawtooth', 0.1);
   setTimeout(() => playTone(true, 587, 0.14, 'triangle', 0.09), 80);
 }
+
+export function playHullBump(enabled: boolean): void {
+  if (!enabled) return;
+  playTone(true, 95, 0.14, 'triangle', 0.11);
+}

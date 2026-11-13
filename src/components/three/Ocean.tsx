@@ -1,31 +1,52 @@
 import { useFrame } from '@react-three/fiber';
-import { useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
-import type { QualityMode } from '../../types/portfolio';
+import { getWaveHeight } from '../../utils/oceanMath';
 
 interface OceanProps {
-  quality: QualityMode;
   shipPosRef: React.RefObject<{ x: number; z: number }>;
 }
 
-export function Ocean({ quality, shipPosRef }: OceanProps) {
-  const meshRef = useRef<THREE.Mesh>(null);
-  const frameCounter = useRef(0);
+const SEGMENTS = 38;
 
-  // En modo Canaima reducimos los segmentos para mantener 60 FPS sin esfuerzo
-  const segments = quality === 'canaima' ? 28 : 44;
+export function Ocean({ shipPosRef }: OceanProps) {
+  const meshRef = useRef<THREE.Mesh>(null);
+  const baseCoordsRef = useRef<Float32Array | null>(null);
+
+  // Jitter sutil una sola vez para que las facetas del mar sean triángulos orgánicos como en la referencia
+  useEffect(() => {
+    const mesh = meshRef.current;
+    if (!mesh) return;
+    const posAttr = mesh.geometry.attributes.position as THREE.BufferAttribute;
+    const base = new Float32Array(posAttr.count * 2);
+
+    for (let i = 0; i < posAttr.count; i += 1) {
+      const bx = posAttr.getX(i);
+      const by = posAttr.getY(i);
+      // No movemos los bordes exteriores para no crear huecos
+      const isEdge = Math.abs(bx) > 215 || Math.abs(by) > 215;
+      const jx = isEdge ? 0 : Math.sin(bx * 12.9898 + by * 78.233) * 2.1;
+      const jy = isEdge ? 0 : Math.cos(bx * 39.346 + by * 11.135) * 2.1;
+      const nx = bx + jx;
+      const ny = by + jy;
+      posAttr.setXY(i, nx, ny);
+      base[i * 2] = nx;
+      base[i * 2 + 1] = ny;
+    }
+
+    baseCoordsRef.current = base;
+    posAttr.needsUpdate = true;
+  }, []);
 
   useFrame(({ clock }) => {
     const mesh = meshRef.current;
-    if (!mesh) return;
+    const base = baseCoordsRef.current;
+    if (!mesh || !base) return;
 
-    // Centramos el océano alrededor del barco para simular mar infinito con geometría pequeña
-    mesh.position.x = Math.round(shipPosRef.current.x / 10) * 10;
-    mesh.position.z = Math.round(shipPosRef.current.z / 10) * 10;
-
-    frameCounter.current += 1;
-    // En modo Canaima actualizamos olas cada 2 frames para ahorrar CPU
-    if (quality === 'canaima' && frameCounter.current % 2 !== 0) return;
+    // Recentramos el plano en pasos discretos del tamaño de celda para evitar parpadeos
+    const snap = 460 / SEGMENTS;
+    mesh.position.x = Math.round(shipPosRef.current.x / snap) * snap;
+    mesh.position.z = Math.round(shipPosRef.current.z / snap) * snap;
 
     const geo = mesh.geometry;
     const posAttr = geo.attributes.position as THREE.BufferAttribute;
@@ -34,13 +55,11 @@ export function Ocean({ quality, shipPosRef }: OceanProps) {
     const oz = mesh.position.z;
 
     for (let i = 0; i < posAttr.count; i += 1) {
-      const vx = posAttr.getX(i) + ox;
-      const vz = -posAttr.getY(i) + oz;
-      const wave =
-        Math.sin(vx * 0.08 + t * 1.4) * 0.35 +
-        Math.cos(vz * 0.09 + t * 1.1) * 0.28;
-      // Al rotar el plano -90° en X, su eje Z local apunta hacia arriba en el mundo
-      posAttr.setZ(i, wave);
+      const lx = base[i * 2];
+      const ly = base[i * 2 + 1];
+      const wx = lx + ox;
+      const wz = -ly + oz;
+      posAttr.setZ(i, getWaveHeight(wx, wz, t));
     }
 
     posAttr.needsUpdate = true;
@@ -48,16 +67,12 @@ export function Ocean({ quality, shipPosRef }: OceanProps) {
   });
 
   return (
-    <mesh
-      ref={meshRef}
-      rotation={[-Math.PI / 2, 0, 0]}
-      receiveShadow={false}
-    >
-      <planeGeometry key={segments} args={[460, 460, segments, segments]} />
+    <mesh ref={meshRef} rotation={[-Math.PI / 2, 0, 0]} receiveShadow={false}>
+      <planeGeometry args={[460, 460, SEGMENTS, SEGMENTS]} />
       <meshStandardMaterial
-        color="#136f8a"
-        roughness={0.55}
-        metalness={0.12}
+        color="#1d8f9c"
+        roughness={0.36}
+        metalness={0.22}
         flatShading
       />
     </mesh>
