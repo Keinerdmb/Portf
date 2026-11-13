@@ -8,14 +8,17 @@ export interface CircleCollider {
 }
 
 /**
- * Fórmula compartida de oleaje: tanto el mesh del océano como la flotación
- * del barco y los barriles leen exactamente la misma altura en (x, z, t).
+ * Fórmula compartida de oleaje: combina marejada amplia con crestas cortas picadas
+ * para que las facetas triangulares tengan relieve definido como en la referencia.
  */
 export function getWaveHeight(x: number, z: number, time: number): number {
-  const primary = Math.sin(x * 0.085 + time * 1.45) * 0.42;
-  const secondary = Math.cos(z * 0.095 + time * 1.15) * 0.34;
-  const chop = Math.sin((x + z) * 0.16 - time * 2.1) * 0.14;
-  return primary + secondary + chop;
+  const swell =
+    Math.sin(x * 0.08 + time * 1.25) * 0.3 +
+    Math.cos(z * 0.09 + time * 1.05) * 0.25;
+  const chop =
+    Math.sin(x * 0.42 + z * 0.34 + time * 2.15) * 0.22 +
+    Math.cos(x * 0.36 - z * 0.46 - time * 1.85) * 0.18;
+  return swell + chop;
 }
 
 /**

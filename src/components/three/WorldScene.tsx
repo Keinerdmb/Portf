@@ -129,10 +129,10 @@ export function WorldScene({
       <color attach="background" args={['#f6bfa0']} />
       <fog attach="fog" args={['#f3b59e', 110, 310]} />
 
-      {/* Iluminación pastel luminosa */}
-      <hemisphereLight args={['#ffd9e2', '#2ec4b6', 1.35]} />
-      <directionalLight position={[-45, 34, -140]} intensity={2.1} color="#ffe4b5" />
-      <directionalLight position={[50, 24, 60]} intensity={0.65} color="#a5f3fc" />
+      {/* Iluminación pastel luminosa + luz clave alineada con el sol para destellos en el agua */}
+      <hemisphereLight args={['#ffd9e2', '#2ec4b6', 1.3]} />
+      <directionalLight position={[-36, 28, -200]} intensity={2.2} color="#ffe3ad" />
+      <directionalLight position={[50, 24, 60]} intensity={0.6} color="#a5f3fc" />
 
       <SkyDome />
       <Ocean shipPosRef={shipPosRef} />
