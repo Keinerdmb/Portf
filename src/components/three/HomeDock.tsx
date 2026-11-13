@@ -1,7 +1,22 @@
-import { useFrame } from '@react-three/fiber';
+import { useFrame, type ThreeEvent } from '@react-three/fiber';
 import { useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { ATARDECER_PALETTE } from '../../data/palette';
+import type { OceanParams } from '../../types/portfolio';
+import {
+  buildSculptedBeachGeometry,
+  queueSandStamp,
+  setupBeachSandMaterial,
+  syncBeachSandMaterial,
+  type SandSharedState,
+  type SandStampItem,
+} from '../../utils/sandDeformation';
+
+interface HomeDockProps {
+  oceanParamsRef: React.RefObject<OceanParams>;
+  sandStateRef: React.RefObject<SandSharedState>;
+  stampQueueRef: React.RefObject<SandStampItem[]>;
+}
 
 function buildDockPalm() {
   const curve = new THREE.CatmullRomCurve3([
@@ -38,23 +53,52 @@ function buildDockPalm() {
   return { trunkGeo, frondGeo, cliffGeo };
 }
 
-export function HomeDock() {
+export function HomeDock({
+  oceanParamsRef,
+  sandStateRef,
+  stampQueueRef,
+}: HomeDockProps) {
   const palmRef = useRef<THREE.Group>(null);
+  const sandMatRef = useRef<THREE.MeshStandardMaterial>(null);
+  const stepParityRef = useRef(1);
   const { trunkGeo, frondGeo, cliffGeo } = useMemo(() => buildDockPalm(), []);
+  const beachGeo = useMemo(() => buildSculptedBeachGeometry(15.4, 0), []);
 
   useFrame(({ clock }) => {
     if (palmRef.current) {
       palmRef.current.rotation.z = Math.sin(clock.getElapsedTime() * 1.4) * 0.06;
     }
+    syncBeachSandMaterial(sandMatRef.current, sandStateRef.current, oceanParamsRef.current);
   });
+
+  const handleBeachClick = (e: ThreeEvent<MouseEvent>) => {
+    if (e.delta > 6) return;
+    stepParityRef.current *= -1;
+    const ang = e.point.x * 1.3 + e.point.z * 2.1;
+    queueSandStamp(stampQueueRef, {
+      x: e.point.x + Math.cos(ang) * stepParityRef.current * 0.14,
+      z: e.point.z + Math.sin(ang) * stepParityRef.current * 0.14,
+      dirX: -Math.sin(ang),
+      dirZ: Math.cos(ang),
+      radius: 0.36,
+      depth: 0.12,
+      aspect: 1.55,
+    });
+  };
 
   return (
     <group position={[0, 0, 0]}>
-      {/* Costa / Isla de partida detrás del muelle */}
+      {/* Costa / Playa de partida reactiva a marea y deformación dinámica */}
       <group position={[-7.5, 0, 12]}>
-        <mesh position={[0, 0.35, 0]}>
-          <cylinderGeometry args={[8.8, 11.5, 2.4, 10]} />
-          <meshStandardMaterial color={ATARDECER_PALETTE.sandGold} flatShading roughness={0.9} />
+        <mesh geometry={beachGeo} position={[0, 0, 0]} onClick={handleBeachClick}>
+          <meshStandardMaterial
+            ref={(el) => {
+              sandMatRef.current = el;
+              setupBeachSandMaterial(el);
+            }}
+            color={ATARDECER_PALETTE.sandGold}
+            roughness={0.9}
+          />
         </mesh>
         <mesh geometry={cliffGeo} position={[-1.5, 2.1, 1]}>
           <meshStandardMaterial color={ATARDECER_PALETTE.grassOlive} flatShading roughness={0.85} />

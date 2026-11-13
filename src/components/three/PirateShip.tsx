@@ -201,7 +201,7 @@ vec2 causticUV = vHullWorldPos.xz + vec2(vHullLocalPos.y * 0.65, -vHullLocalPos.
 float cA = hullCausticNet(causticUV, uCausticTime);
 float cB = hullCausticNet(causticUV * 1.45 + 3.1, -uCausticTime * 0.8);
 float caustic = cA * 0.65 + cB * 0.45;
-totalEmissiveRadiance += vec3(1.00, 0.80, 0.52) * caustic * submerged * 0.62;`
+totalEmissiveRadiance += vec3(0.24, 0.86, 0.78) * caustic * submerged * 0.62;`
       );
   };
   mat.customProgramCacheKey = () => 'hull-caustics-v1';

@@ -1,14 +1,24 @@
-import { useFrame } from '@react-three/fiber';
+import { useFrame, type ThreeEvent } from '@react-three/fiber';
 import { useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { ISLANDS } from '../../data/islands';
 import { ATARDECER_PALETTE } from '../../data/palette';
 import type { IslandData, IslandId, OceanParams } from '../../types/portfolio';
 import { sampleGerstnerSurface, stepBuoyantBody } from '../../utils/oceanMath';
+import {
+  buildSculptedBeachGeometry,
+  queueSandStamp,
+  setupBeachSandMaterial,
+  syncBeachSandMaterial,
+  type SandSharedState,
+  type SandStampItem,
+} from '../../utils/sandDeformation';
 
 interface IslandsProps {
   nearbyIsland: IslandId | null;
   oceanParamsRef: React.RefObject<OceanParams>;
+  sandStateRef: React.RefObject<SandSharedState>;
+  stampQueueRef: React.RefObject<SandStampItem[]>;
   minigameActive: boolean;
   hitTargets: number[];
   onHitTarget: (idx: number) => void;
@@ -51,20 +61,7 @@ function buildPalmGeometries() {
   }
   cliffGeo.computeVertexNormals();
 
-  // Base de playa irregular
-  const beachGeo = new THREE.CylinderGeometry(9.8, 13.6, 2.2, 11);
-  const bPos = beachGeo.attributes.position as THREE.BufferAttribute;
-  for (let i = 0; i < bPos.count; i += 1) {
-    const vx = bPos.getX(i);
-    const vy = bPos.getY(i);
-    const vz = bPos.getZ(i);
-    const ang = Math.atan2(vz, vx);
-    const stretch = 1 + Math.sin(ang * 3) * 0.14 + Math.cos(ang * 2) * 0.08;
-    bPos.setXYZ(i, vx * stretch, vy, vz * stretch);
-  }
-  beachGeo.computeVertexNormals();
-
-  return { trunkGeo, frondGeo, cliffGeo, beachGeo };
+  return { trunkGeo, frondGeo, cliffGeo };
 }
 
 function createWoodSignTexture(label: string, accentColor: string): THREE.CanvasTexture {
@@ -147,15 +144,29 @@ function CurvedPalm({
 
 function IslandMesh({
   island,
+  tileIndex,
   isNearby,
   geometries,
+  oceanParamsRef,
+  sandStateRef,
+  stampQueueRef,
 }: {
   island: IslandData;
+  tileIndex: number;
   isNearby: boolean;
   geometries: ReturnType<typeof buildPalmGeometries>;
+  oceanParamsRef: React.RefObject<OceanParams>;
+  sandStateRef: React.RefObject<SandSharedState>;
+  stampQueueRef: React.RefObject<SandStampItem[]>;
 }) {
   const beaconRef = useRef<THREE.Mesh>(null);
   const lighthouseLightRef = useRef<THREE.Group>(null);
+  const sandMatRef = useRef<THREE.MeshStandardMaterial>(null);
+
+  const beachGeo = useMemo(
+    () => buildSculptedBeachGeometry(17.5, tileIndex),
+    [tileIndex]
+  );
 
   const signTexture = useMemo(
     () => createWoodSignTexture(island.signLabel, island.accentColor),
@@ -171,13 +182,35 @@ function IslandMesh({
     if (lighthouseLightRef.current) {
       lighthouseLightRef.current.rotation.y = t * 1.6;
     }
+    syncBeachSandMaterial(sandMatRef.current, sandStateRef.current, oceanParamsRef.current);
   });
+
+  const stampPointerFootprint = (e: ThreeEvent<MouseEvent>) => {
+    if (e.delta > 6) return;
+    const ang = e.point.x * 1.7 + e.point.z * 2.3;
+    queueSandStamp(stampQueueRef, {
+      x: e.point.x,
+      z: e.point.z,
+      dirX: Math.cos(ang),
+      dirZ: Math.sin(ang),
+      radius: 0.38,
+      depth: 0.12,
+      aspect: 1.55,
+    });
+  };
 
   return (
     <group position={[island.position[0], 0, island.position[1]]}>
-      {/* Playa irregular */}
-      <mesh geometry={geometries.beachGeo} position={[0, 0.35, 0]}>
-        <meshStandardMaterial color={ATARDECER_PALETTE.sandGold} flatShading roughness={0.9} />
+      {/* Playa esculpida reactiva a marea y deformación dinámica en RenderTarget */}
+      <mesh geometry={beachGeo} position={[0, 0, 0]} onClick={stampPointerFootprint}>
+        <meshStandardMaterial
+          ref={(el) => {
+            sandMatRef.current = el;
+            setupBeachSandMaterial(el);
+          }}
+          color={ATARDECER_PALETTE.sandGold}
+          roughness={0.9}
+        />
       </mesh>
 
       {/* Acantilados pastel de paleta/atardecer.jpg (oliva dorado, terracota y lavanda) */}
@@ -481,6 +514,8 @@ function BuoyantCrate({
 export function Islands({
   nearbyIsland,
   oceanParamsRef,
+  sandStateRef,
+  stampQueueRef,
   minigameActive,
   hitTargets,
   onHitTarget,
@@ -490,12 +525,16 @@ export function Islands({
 
   return (
     <group>
-      {ISLANDS.map((island) => (
+      {ISLANDS.map((island, idx) => (
         <IslandMesh
           key={island.id}
           island={island}
+          tileIndex={idx + 1}
           isNearby={nearbyIsland === island.id}
           geometries={geometries}
+          oceanParamsRef={oceanParamsRef}
+          sandStateRef={sandStateRef}
+          stampQueueRef={stampQueueRef}
         />
       ))}
 

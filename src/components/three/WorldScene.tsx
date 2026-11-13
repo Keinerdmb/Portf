@@ -9,14 +9,17 @@ import type {
   ShipTelemetry,
 } from '../../types/portfolio';
 import { CameraRig } from './CameraRig';
+import { FishSchools } from './FishSchools';
 import { HomeDock } from './HomeDock';
 import { Islands } from './Islands';
 import { Ocean } from './Ocean';
 import { PirateCharacter } from './PirateCharacter';
 import { PirateShip } from './PirateShip';
+import { SandSimulation } from './SandSimulation';
 import { SkyDome } from './SkyDome';
 import { WakeTrail } from './WakeTrail';
 import { WindAndSkyLife } from './WindAndSkyLife';
+import type { SandSharedState, SandStampItem } from '../../utils/sandDeformation';
 
 interface WorldSceneProps {
   phase: GamePhase;
@@ -41,23 +44,35 @@ function BoardingActor({
   onBoarded,
   boardingProgressRef,
   boardingCharPosRef,
+  shipTelemetryRef,
 }: {
   phase: GamePhase;
   onBoarded: () => void;
   boardingProgressRef: React.MutableRefObject<number>;
   boardingCharPosRef: React.MutableRefObject<THREE.Vector3>;
+  shipTelemetryRef: React.RefObject<ShipTelemetry>;
 }) {
   const actorRef = useRef<THREE.Group>(null);
   const completedRef = useRef(false);
 
   useFrame((_, rawDelta) => {
+    if (phase === 'sailing') {
+      const ship = shipTelemetryRef.current;
+      boardingCharPosRef.current.set(
+        ship.x + Math.sin(ship.heading) * 2.1,
+        ship.y + 1.02,
+        ship.z + Math.cos(ship.heading) * 2.1
+      );
+      return;
+    }
+
     const actor = actorRef.current;
     if (!actor) return;
 
     if (phase === 'title') {
       completedRef.current = false;
       boardingProgressRef.current = 0;
-      actor.position.set(-3.1, 1.08, 7.0);
+      actor.position.set(-4.8, 1.24, 8.6);
       actor.rotation.y = Math.PI * 0.78;
       boardingCharPosRef.current.copy(actor.position);
       return;
@@ -65,17 +80,23 @@ function BoardingActor({
 
     if (phase === 'boarding') {
       const dt = Math.min(rawDelta, 0.05);
-      boardingProgressRef.current = Math.min(boardingProgressRef.current + dt / 2.5, 1);
+      boardingProgressRef.current = Math.min(boardingProgressRef.current + dt / 2.7, 1);
       const p = boardingProgressRef.current;
 
-      if (p < 0.55) {
-        const t1 = p / 0.55;
+      if (p < 0.35) {
+        const t0 = p / 0.35;
+        actor.position.x = THREE.MathUtils.lerp(-4.8, -3.1, t0);
+        actor.position.y = THREE.MathUtils.lerp(1.24, 1.08, t0);
+        actor.position.z = THREE.MathUtils.lerp(8.6, 6.6, t0);
+        actor.rotation.y = Math.PI * 0.85;
+      } else if (p < 0.7) {
+        const t1 = (p - 0.35) / 0.35;
         actor.position.x = THREE.MathUtils.lerp(-3.1, -2.5, t1);
         actor.position.y = 1.08;
-        actor.position.z = THREE.MathUtils.lerp(7.0, 1.95, t1);
+        actor.position.z = THREE.MathUtils.lerp(6.6, 1.95, t1);
         actor.rotation.y = Math.PI;
       } else {
-        const t2 = (p - 0.55) / 0.45;
+        const t2 = (p - 0.7) / 0.3;
         actor.position.x = THREE.MathUtils.lerp(-2.5, 0, t2);
         actor.position.y = THREE.MathUtils.lerp(1.08, 1.15, t2);
         actor.position.z = 1.95;
@@ -94,7 +115,7 @@ function BoardingActor({
   if (phase === 'sailing') return null;
 
   return (
-    <group ref={actorRef} position={[-3.1, 1.08, 7.0]}>
+    <group ref={actorRef} position={[-4.8, 1.24, 8.6]}>
       <PirateCharacter isWalking={phase === 'boarding'} />
     </group>
   );
@@ -119,7 +140,9 @@ export function WorldScene({
 }: WorldSceneProps) {
   const shipPosRef = useRef({ x: 0, z: 0 });
   const boardingProgressRef = useRef(0);
-  const boardingCharPosRef = useRef(new THREE.Vector3(-3.1, 1.08, 7.0));
+  const boardingCharPosRef = useRef(new THREE.Vector3(-4.8, 1.24, 8.6));
+  const stampQueueRef = useRef<SandStampItem[]>([]);
+  const sandStateRef = useRef<SandSharedState>({ texture: null, time: 0 });
 
   return (
     <Canvas
@@ -143,8 +166,24 @@ export function WorldScene({
       <directionalLight position={[50, 24, 60]} intensity={0.65} color={ATARDECER_PALETTE.fillLight} />
 
       <SkyDome />
+      <SandSimulation
+        phase={phase}
+        oceanParamsRef={oceanParamsRef}
+        shipTelemetryRef={shipTelemetryRef}
+        playerPosRef={boardingCharPosRef}
+        stampQueueRef={stampQueueRef}
+        sandStateRef={sandStateRef}
+      />
       <Ocean shipPosRef={shipPosRef} oceanParamsRef={oceanParamsRef} />
-      <HomeDock />
+      <FishSchools
+        shipTelemetryRef={shipTelemetryRef}
+        playerPosRef={boardingCharPosRef}
+      />
+      <HomeDock
+        oceanParamsRef={oceanParamsRef}
+        sandStateRef={sandStateRef}
+        stampQueueRef={stampQueueRef}
+      />
       <WindAndSkyLife shipPosRef={shipPosRef} oceanParamsRef={oceanParamsRef} />
       <WakeTrail shipTelemetryRef={shipTelemetryRef} oceanParamsRef={oceanParamsRef} />
 
@@ -153,6 +192,7 @@ export function WorldScene({
         onBoarded={onBoarded}
         boardingProgressRef={boardingProgressRef}
         boardingCharPosRef={boardingCharPosRef}
+        shipTelemetryRef={shipTelemetryRef}
       />
 
       <PirateShip
@@ -170,6 +210,8 @@ export function WorldScene({
       <Islands
         nearbyIsland={nearbyIsland}
         oceanParamsRef={oceanParamsRef}
+        sandStateRef={sandStateRef}
+        stampQueueRef={stampQueueRef}
         minigameActive={minigameActive}
         hitTargets={hitTargets}
         onHitTarget={onHitTarget}
