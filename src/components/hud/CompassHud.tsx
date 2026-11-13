@@ -117,40 +117,40 @@ export function CompassHud({
       {/* Barra superior: Viento + Brújula estilo cinta náutica + Acciones */}
       <div className="flex flex-wrap items-start justify-between gap-3">
         {/* Indicador de Viento */}
-        <div className="hidden items-center gap-2 rounded-full border border-amber-100/25 bg-slate-950/55 px-3 py-1.5 backdrop-blur-[2px] sm:flex">
+        <div className="hidden items-center gap-2 rounded-full border border-[#FFD699]/30 bg-[#211926]/65 px-3 py-1.5 backdrop-blur-[2px] sm:flex">
           <span
             ref={windArrowRef}
-            className="inline-block font-mono text-sm leading-none text-amber-300"
+            className="inline-block font-mono text-sm leading-none text-[#FFD699]"
           >
             ↑
           </span>
           <span
             ref={windKnotsRef}
-            className="font-mono text-[11px] tracking-wider text-amber-100/90"
+            className="font-mono text-[11px] tracking-wider text-[#FFF2C6]"
           >
             11 KT
           </span>
         </div>
 
-        {/* Brújula central estilo cinta náutica de la referencia */}
+        {/* Brújula central estilo cinta náutica */}
         <div className="mx-auto flex w-full max-w-md flex-col items-center gap-1">
           <div className="relative flex w-full items-center justify-center">
             {/* Extremo izquierdo de cinta */}
             <svg
               viewBox="0 0 24 28"
-              className="h-7 w-5 shrink-0 text-amber-100/40"
+              className="h-7 w-5 shrink-0 text-[#FFD699]/45"
               fill="none"
             >
               <path
                 d="M24 2H4L11 14L4 26H24"
                 stroke="currentColor"
                 strokeWidth="1.5"
-                fill="rgba(15, 23, 42, 0.45)"
+                fill="rgba(33, 25, 38, 0.58)"
               />
             </svg>
 
-            <div className="relative h-7 flex-1 overflow-hidden border-y border-amber-100/45 bg-slate-950/45 px-3 backdrop-blur-[1px]">
-              <div className="absolute top-0 bottom-0 left-1/2 w-0.5 -translate-x-1/2 bg-amber-300/90" />
+            <div className="relative h-7 flex-1 overflow-hidden border-y border-[#FFD699]/45 bg-[#211926]/58 px-3 backdrop-blur-[1px]">
+              <div className="absolute top-0 bottom-0 left-1/2 w-0.5 -translate-x-1/2 bg-[#FD8457]" />
 
               {ISLANDS.map((island, idx) => (
                 <div
@@ -161,7 +161,7 @@ export function CompassHud({
                   className="absolute top-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center"
                 >
                   <span
-                    className="h-2.5 w-2.5 rotate-45 border border-white/85"
+                    className="h-2.5 w-2.5 rotate-45 border border-[#FFFDF7]/85"
                     style={{ backgroundColor: island.accentColor }}
                   />
                 </div>
@@ -171,20 +171,20 @@ export function CompassHud({
             {/* Extremo derecho de cinta */}
             <svg
               viewBox="0 0 24 28"
-              className="h-7 w-5 shrink-0 text-amber-100/40"
+              className="h-7 w-5 shrink-0 text-[#FFD699]/45"
               fill="none"
             >
               <path
                 d="M0 2H20L13 14L20 26H0"
                 stroke="currentColor"
                 strokeWidth="1.5"
-                fill="rgba(15, 23, 42, 0.45)"
+                fill="rgba(33, 25, 38, 0.58)"
               />
             </svg>
           </div>
           <span
             ref={headingTextRef}
-            className="font-mono text-[11px] tracking-widest text-amber-100 drop-shadow"
+            className="font-mono text-[11px] tracking-widest text-[#FFF2C6] drop-shadow"
           >
             N 0°
           </span>
@@ -195,7 +195,7 @@ export function CompassHud({
           <button
             type="button"
             onClick={onOpenMap}
-            className="cursor-pointer rounded border border-amber-300/50 bg-slate-950/65 px-3 py-1.5 font-mono text-xs text-amber-200 transition hover:bg-amber-300 hover:text-slate-950"
+            className="cursor-pointer rounded border border-[#FFD699]/50 bg-[#211926]/70 px-3 py-1.5 font-mono text-xs text-[#FFD699] transition hover:bg-[#FFD699] hover:text-[#211926]"
           >
             MAPA
           </button>
@@ -204,8 +204,8 @@ export function CompassHud({
             onClick={onToggleOceanPanel}
             className={`cursor-pointer rounded border px-3 py-1.5 font-mono text-xs transition ${
               oceanPanelOpen
-                ? 'border-sky-300 bg-sky-400 text-slate-950'
-                : 'border-sky-300/45 bg-slate-950/65 text-sky-200 hover:border-sky-300'
+                ? 'border-[#FD8457] bg-[#FD8457] text-[#211926]'
+                : 'border-[#FD8457]/55 bg-[#211926]/70 text-[#FFD699] hover:border-[#FD8457]'
             }`}
           >
             OLAS / VIENTO
@@ -213,14 +213,14 @@ export function CompassHud({
           <button
             type="button"
             onClick={onToggleCamera}
-            className="cursor-pointer rounded border border-white/25 bg-slate-950/65 px-3 py-1.5 font-mono text-xs text-slate-100 transition hover:border-amber-300 hover:text-amber-200"
+            className="cursor-pointer rounded border border-[#F1C2B2]/35 bg-[#211926]/70 px-3 py-1.5 font-mono text-xs text-[#FFF2C6] transition hover:border-[#FFD699] hover:text-[#FFD699]"
           >
             {isFirstPerson ? '1RA PERSONA' : '3RA PERSONA'}
           </button>
           <button
             type="button"
             onClick={onToggleSfx}
-            className="cursor-pointer rounded border border-white/25 bg-slate-950/65 px-2.5 py-1.5 font-mono text-xs text-slate-200 transition hover:border-white/60"
+            className="cursor-pointer rounded border border-[#F1C2B2]/35 bg-[#211926]/70 px-2.5 py-1.5 font-mono text-xs text-[#FFF2C6] transition hover:border-[#F1C2B2]/75"
           >
             SFX: {sfxEnabled ? 'ON' : 'OFF'}
           </button>
@@ -230,14 +230,14 @@ export function CompassHud({
       {/* Centro inferior: aviso de isla / mini-juego */}
       <div className="flex flex-col items-center gap-3">
         {minigameActive && (
-          <div className="pointer-events-auto flex items-center gap-4 rounded-lg border border-rose-400/50 bg-slate-950/85 px-5 py-2.5">
-            <div className="font-mono text-xs text-rose-200">
-              MINI-JUEGO: HAZ CLIC EN LOS BARRILES ROJOS ({minigameScore}/{minigameTotal})
+          <div className="pointer-events-auto flex items-center gap-4 rounded-lg border border-[#FD8457]/55 bg-[#211926]/88 px-5 py-2.5">
+            <div className="font-mono text-xs text-[#FFD699]">
+              MINI-JUEGO: HAZ CLIC EN LOS BARRILES CORAL ({minigameScore}/{minigameTotal})
             </div>
             <button
               type="button"
               onClick={onStopMinigame}
-              className="cursor-pointer rounded border border-white/20 px-2.5 py-1 font-mono text-[11px] text-slate-300 hover:bg-white/10"
+              className="cursor-pointer rounded border border-[#F1C2B2]/30 px-2.5 py-1 font-mono text-[11px] text-[#FFF2C6] hover:bg-[#FFF2C6]/10"
             >
               SALIR
             </button>
@@ -248,7 +248,7 @@ export function CompassHud({
           <button
             type="button"
             onClick={() => onOpenIsland(activeNearby.id)}
-            className="pointer-events-auto cursor-pointer rounded-lg border-2 border-amber-300 bg-slate-950/80 px-6 py-3 font-mono text-xs font-semibold tracking-wider text-amber-200 shadow-[0_0_25px_rgba(251,191,36,0.3)] transition hover:scale-105 hover:bg-amber-300 hover:text-slate-950 sm:text-sm"
+            className="pointer-events-auto cursor-pointer rounded-lg border-2 border-[#FFD699] bg-[#211926]/85 px-6 py-3 font-mono text-xs font-semibold tracking-wider text-[#FFF2C6] shadow-[0_0_25px_rgba(253,132,87,0.35)] transition hover:scale-105 hover:bg-[#FFD699] hover:text-[#211926] sm:text-sm"
           >
             [E] DESEMBARCAR EN {activeNearby.name}
           </button>
@@ -256,11 +256,11 @@ export function CompassHud({
 
         {/* Pie: controles discretos */}
         <div className="flex w-full items-end justify-between gap-4">
-          <div className="hidden font-mono text-[11px] text-amber-50/90 drop-shadow sm:block">
+          <div className="hidden font-mono text-[11px] text-[#FFF2C6]/90 drop-shadow sm:block">
             [WASD / FLECHAS] TIMÓN · [ARRASTRAR] CÁMARA · [C] CENTRAR · [E] ENTRAR
           </div>
 
-          <div className="hidden font-display text-xs tracking-wider text-amber-50/90 drop-shadow sm:block">
+          <div className="hidden font-display text-xs tracking-wider text-[#FFF2C6]/90 drop-shadow sm:block">
             [SCROLL: 1ST / 3RD PERSON]
           </div>
 
@@ -277,7 +277,7 @@ export function CompassHud({
               onPointerLeave={() => {
                 mobileInputRef.current.turn = 0;
               }}
-              className="rounded border border-white/20 bg-slate-950/80 px-3 py-2 font-mono text-xs"
+              className="rounded border border-[#F1C2B2]/30 bg-[#211926]/85 px-3 py-2 font-mono text-xs text-[#FFF2C6]"
             >
               ◀
             </button>
@@ -292,7 +292,7 @@ export function CompassHud({
               onPointerLeave={() => {
                 mobileInputRef.current.forward = 0;
               }}
-              className="rounded border border-amber-400/50 bg-slate-950/80 px-4 py-2 font-mono text-xs text-amber-300"
+              className="rounded border border-[#FFD699]/55 bg-[#211926]/85 px-4 py-2 font-mono text-xs text-[#FFD699]"
             >
               AVANZAR
             </button>
@@ -307,7 +307,7 @@ export function CompassHud({
               onPointerLeave={() => {
                 mobileInputRef.current.turn = 0;
               }}
-              className="rounded border border-white/20 bg-slate-950/80 px-3 py-2 font-mono text-xs"
+              className="rounded border border-[#F1C2B2]/30 bg-[#211926]/85 px-3 py-2 font-mono text-xs text-[#FFF2C6]"
             >
               ▶
             </button>

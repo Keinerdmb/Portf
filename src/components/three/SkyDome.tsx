@@ -1,6 +1,7 @@
 import { useFrame, useThree } from '@react-three/fiber';
 import { useMemo, useRef } from 'react';
 import * as THREE from 'three';
+import { ATARDECER_PALETTE } from '../../data/palette';
 
 const SKY_VERTEX_SHADER = `
   varying vec3 vLocalDir;
@@ -18,28 +19,28 @@ const SKY_FRAGMENT_SHADER = `
     vec3 dir = normalize(vLocalDir);
     float h = clamp(dir.y, -0.15, 1.0);
 
-    // Paleta de atardecer estilo Steven Universe:
-    // Durazno pastel -> Rosa algodón -> Lavanda -> Azul crepuscular
-    vec3 belowHorizon = vec3(0.95, 0.73, 0.63);
-    vec3 horizonColor = vec3(0.99, 0.82, 0.66);
-    vec3 pinkBand     = vec3(0.95, 0.62, 0.72);
-    vec3 lavenderBand = vec3(0.56, 0.52, 0.80);
-    vec3 zenithColor  = vec3(0.28, 0.35, 0.64);
+    // Paleta de paleta/atardecer.jpg:
+    // Horizonte rosa polvo -> durazno -> melocotón crema -> malva suave en el cenit
+    vec3 belowHorizon = vec3(0.945, 0.761, 0.698);
+    vec3 horizonColor = vec3(0.969, 0.816, 0.702);
+    vec3 apricotBand  = vec3(1.000, 0.875, 0.722);
+    vec3 creamBand    = vec3(1.000, 0.949, 0.776);
+    vec3 zenithColor  = vec3(0.576, 0.486, 0.569);
 
-    vec3 col = mix(belowHorizon, horizonColor, smoothstep(-0.08, 0.04, h));
-    col = mix(col, pinkBand, smoothstep(0.03, 0.22, h));
-    col = mix(col, lavenderBand, smoothstep(0.18, 0.48, h));
-    col = mix(col, zenithColor, smoothstep(0.42, 0.88, h));
+    vec3 col = mix(belowHorizon, horizonColor, smoothstep(-0.08, 0.05, h));
+    col = mix(col, apricotBand, smoothstep(0.04, 0.24, h));
+    col = mix(col, creamBand, smoothstep(0.20, 0.48, h));
+    col = mix(col, zenithColor, smoothstep(0.45, 0.92, h));
 
-    // Sol integrado suavemente en el cielo (sin aros ni efecto "ojo")
+    // Sol luminoso integrado suavemente en el horizonte
     float sunDot = max(dot(dir, normalize(uSunDir)), 0.0);
     float sunDisc = smoothstep(0.9965, 0.9982, sunDot);
-    float innerGlow = pow(sunDot, 28.0) * 0.45;
-    float outerGlow = pow(sunDot, 5.0) * 0.28;
+    float innerGlow = pow(sunDot, 26.0) * 0.48;
+    float outerGlow = pow(sunDot, 5.0) * 0.30;
 
-    col += vec3(1.0, 0.88, 0.68) * outerGlow;
-    col += vec3(1.0, 0.94, 0.82) * innerGlow;
-    col = mix(col, vec3(1.0, 0.98, 0.90), sunDisc);
+    col += vec3(1.00, 0.875, 0.702) * outerGlow;
+    col += vec3(1.00, 0.949, 0.816) * innerGlow;
+    col = mix(col, vec3(1.0, 1.0, 1.0), sunDisc);
 
     gl_FragColor = vec4(col, 1.0);
   }
@@ -69,7 +70,7 @@ const CLOUD_SPECS: CloudSpec[] = [
 ];
 
 /**
- * Nube esponjosa estilo Steven Universe (copos crema arriba + base rosa pastel).
+ * Nube esponjosa de paleta/atardecer.jpg (copos crema-albaricoque + base rosa-durazno).
  */
 function StylizedCloud({
   spec,
@@ -83,22 +84,22 @@ function StylizedCloud({
       {/* Sombra inferior rosada-durazno */}
       <mesh position={[0, -0.8, 0]} scale={[7.2, 2.2, 3.6]}>
         <icosahedronGeometry args={[1, 1]} />
-        <meshBasicMaterial color="#f6b0bb" fog={false} />
+        <meshBasicMaterial color={ATARDECER_PALETTE.cloudWarmShadow} fog={false} />
       </mesh>
-      {/* Copo central blanco-crema */}
+      {/* Copo central crema cálido */}
       <mesh position={[0, 1.0, 0]} scale={[4.8, 3.1, 3.2]}>
         <icosahedronGeometry args={[1, 1]} />
-        <meshBasicMaterial color="#fff7f0" fog={false} />
+        <meshBasicMaterial color={ATARDECER_PALETTE.cloudCream} fog={false} />
       </mesh>
-      {/* Copo izquierdo */}
+      {/* Copo izquierdo melocotón */}
       <mesh position={[-4.2, 0.2, 0.3]} scale={[3.4, 2.3, 2.5]}>
         <icosahedronGeometry args={[1, 1]} />
-        <meshBasicMaterial color="#ffe8df" fog={false} />
+        <meshBasicMaterial color={ATARDECER_PALETTE.cloudApricot} fog={false} />
       </mesh>
-      {/* Copo derecho */}
+      {/* Copo derecho crema dorado */}
       <mesh position={[4.5, 0.35, -0.2]} scale={[3.8, 2.5, 2.7]}>
         <icosahedronGeometry args={[1, 1]} />
-        <meshBasicMaterial color="#fff2ea" fog={false} />
+        <meshBasicMaterial color={ATARDECER_PALETTE.cloudCream} fog={false} />
       </mesh>
     </group>
   );

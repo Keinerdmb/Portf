@@ -52,15 +52,15 @@ export function OceanControlsPanel({
   const deg = Math.round(((params.currentAngle * 180) / Math.PI) % 360);
 
   return (
-    <div className="pointer-events-auto absolute top-20 right-4 z-30 w-72 rounded-xl border border-amber-200/30 bg-slate-950/85 p-4 text-slate-100 shadow-2xl backdrop-blur-sm sm:right-6">
-      <div className="flex items-center justify-between border-b border-white/10 pb-2">
-        <span className="font-mono text-xs font-semibold tracking-wider text-amber-300">
+    <div className="pointer-events-auto absolute top-20 right-4 z-30 w-72 rounded-xl border border-[#FFD699]/30 bg-[#211926]/88 p-4 text-[#FFF2C6] shadow-2xl backdrop-blur-sm sm:right-6">
+      <div className="flex items-center justify-between border-b border-[#F1C2B2]/15 pb-2">
+        <span className="font-mono text-xs font-semibold tracking-wider text-[#FFD699]">
           GERSTNER // OLAS Y VIENTO
         </span>
         <button
           type="button"
           onClick={onClose}
-          className="cursor-pointer font-mono text-xs text-slate-400 hover:text-amber-200"
+          className="cursor-pointer font-mono text-xs text-[#E8C5B8]/70 hover:text-[#FFF2C6]"
         >
           ✕
         </button>
@@ -73,7 +73,7 @@ export function OceanControlsPanel({
             key={preset.label}
             type="button"
             onClick={() => onChange(preset.values)}
-            className="cursor-pointer rounded border border-white/15 bg-white/5 py-1 font-mono text-[10px] text-slate-200 transition hover:border-amber-300 hover:text-amber-200"
+            className="cursor-pointer rounded border border-[#F1C2B2]/20 bg-[#F7D0B3]/5 py-1 font-mono text-[10px] text-[#FFF2C6] transition hover:border-[#FFD699] hover:text-[#FFD699]"
           >
             {preset.label}
           </button>
@@ -82,9 +82,9 @@ export function OceanControlsPanel({
 
       <div className="mt-4 space-y-3 font-mono text-[11px]">
         <label className="block">
-          <div className="flex justify-between text-slate-300">
+          <div className="flex justify-between text-[#F1C2B2]">
             <span>Viento</span>
-            <span className="text-amber-200">{params.windSpeed.toFixed(0)} KT</span>
+            <span className="text-[#FFD699]">{params.windSpeed.toFixed(0)} KT</span>
           </div>
           <input
             type="range"
@@ -95,14 +95,14 @@ export function OceanControlsPanel({
             onChange={(e) =>
               onChange({ ...params, windSpeed: Number(e.target.value) })
             }
-            className="mt-1 w-full accent-amber-300"
+            className="mt-1 w-full accent-[#FFD699]"
           />
         </label>
 
         <label className="block">
-          <div className="flex justify-between text-slate-300">
+          <div className="flex justify-between text-[#F1C2B2]">
             <span>Dirección corriente</span>
-            <span className="text-amber-200">{deg}°</span>
+            <span className="text-[#FFD699]">{deg}°</span>
           </div>
           <input
             type="range"
@@ -113,14 +113,14 @@ export function OceanControlsPanel({
             onChange={(e) =>
               onChange({ ...params, currentAngle: Number(e.target.value) })
             }
-            className="mt-1 w-full accent-amber-300"
+            className="mt-1 w-full accent-[#FFD699]"
           />
         </label>
 
         <label className="block">
-          <div className="flex justify-between text-slate-300">
+          <div className="flex justify-between text-[#F1C2B2]">
             <span>Altura mín. ola</span>
-            <span className="text-sky-300">{params.minWaveHeight.toFixed(2)} m</span>
+            <span className="text-[#FD8457]">{params.minWaveHeight.toFixed(2)} m</span>
           </div>
           <input
             type="range"
@@ -135,14 +135,14 @@ export function OceanControlsPanel({
                 maxWaveHeight: Math.max(params.maxWaveHeight, Number(e.target.value)),
               })
             }
-            className="mt-1 w-full accent-sky-300"
+            className="mt-1 w-full accent-[#FD8457]"
           />
         </label>
 
         <label className="block">
-          <div className="flex justify-between text-slate-300">
+          <div className="flex justify-between text-[#F1C2B2]">
             <span>Altura máx. ola</span>
-            <span className="text-sky-300">{params.maxWaveHeight.toFixed(2)} m</span>
+            <span className="text-[#FD8457]">{params.maxWaveHeight.toFixed(2)} m</span>
           </div>
           <input
             type="range"
@@ -157,14 +157,14 @@ export function OceanControlsPanel({
                 minWaveHeight: Math.min(params.minWaveHeight, Number(e.target.value)),
               })
             }
-            className="mt-1 w-full accent-sky-300"
+            className="mt-1 w-full accent-[#FD8457]"
           />
         </label>
 
         <label className="block">
-          <div className="flex justify-between text-slate-300">
+          <div className="flex justify-between text-[#F1C2B2]">
             <span>Frecuencia oleaje</span>
-            <span className="text-emerald-300">{params.waveFrequency.toFixed(2)}x</span>
+            <span className="text-[#B5A8C9]">{params.waveFrequency.toFixed(2)}x</span>
           </div>
           <input
             type="range"
@@ -175,7 +175,7 @@ export function OceanControlsPanel({
             onChange={(e) =>
               onChange({ ...params, waveFrequency: Number(e.target.value) })
             }
-            className="mt-1 w-full accent-emerald-300"
+            className="mt-1 w-full accent-[#B5A8C9]"
           />
         </label>
       </div>

@@ -1,6 +1,7 @@
 import { Canvas, useFrame } from '@react-three/fiber';
 import { useRef } from 'react';
 import * as THREE from 'three';
+import { ATARDECER_PALETTE } from '../../data/palette';
 import type {
   GamePhase,
   IslandId,
@@ -132,14 +133,14 @@ export function WorldScene({
       }}
       camera={{ fov: 60, near: 0.2, far: 900, position: [-9.0, 4.1, 10.2] }}
     >
-      {/* Fondo pastel cálido y neblina atmosférica suave estilo Steven Universe */}
-      <color attach="background" args={['#f6bfa0']} />
-      <fog attach="fog" args={['#f3b59e', 110, 310]} />
+      {/* Fondo pastel cálido y neblina atmosférica alineada con paleta/atardecer.jpg */}
+      <color attach="background" args={[ATARDECER_PALETTE.horizonRose]} />
+      <fog attach="fog" args={[ATARDECER_PALETTE.horizonRose, 110, 310]} />
 
-      {/* Iluminación pastel luminosa + luz clave alineada con el sol para destellos en el agua */}
-      <hemisphereLight args={['#ffd9e2', '#2ec4b6', 1.3]} />
-      <directionalLight position={[-36, 28, -200]} intensity={2.2} color="#ffe3ad" />
-      <directionalLight position={[50, 24, 60]} intensity={0.6} color="#a5f3fc" />
+      {/* Iluminación de atardecer: cielo crema-durazno, reflejo malva y luz solar cálida */}
+      <hemisphereLight args={[ATARDECER_PALETTE.hemiSky, ATARDECER_PALETTE.hemiGround, 1.35]} />
+      <directionalLight position={[-36, 28, -200]} intensity={2.25} color={ATARDECER_PALETTE.sunLight} />
+      <directionalLight position={[50, 24, 60]} intensity={0.65} color={ATARDECER_PALETTE.fillLight} />
 
       <SkyDome />
       <Ocean shipPosRef={shipPosRef} oceanParamsRef={oceanParamsRef} />

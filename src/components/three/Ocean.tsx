@@ -2,6 +2,7 @@ import { useFrame } from '@react-three/fiber';
 import { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { ISLANDS } from '../../data/islands';
+import { ATARDECER_PALETTE } from '../../data/palette';
 import type { OceanParams } from '../../types/portfolio';
 import { DEFAULT_OCEAN_PARAMS } from '../../utils/oceanMath';
 
@@ -181,23 +182,23 @@ const GERSTNER_FRAGMENT_SHADER = `
     float hSpan = max(0.25, uMaxHeight);
     float hNorm = clamp((vWaveHeight + hSpan * 0.5) / hSpan, 0.0, 1.0);
 
-    vec3 shallowCrystal = vec3(0.24, 0.85, 0.78);
-    vec3 midOceanTeal   = vec3(0.05, 0.42, 0.54);
-    vec3 abyssalDeep    = vec3(0.015, 0.11, 0.25);
+    vec3 shallowCrystal = vec3(0.557, 0.537, 0.659);
+    vec3 midOceanDusk   = vec3(0.580, 0.392, 0.349);
+    vec3 abyssalDeep    = vec3(0.322, 0.231, 0.278);
 
-    vec3 deepWater = mix(midOceanTeal, abyssalDeep, smoothstep(0.2, 1.0, depthFactor) * (1.0 - hNorm * 0.55));
+    vec3 deepWater = mix(midOceanDusk, abyssalDeep, smoothstep(0.2, 1.0, depthFactor) * (1.0 - hNorm * 0.55));
     vec3 waterCol  = mix(shallowCrystal, deepWater, smoothstep(0.0, 0.78, depthFactor));
 
-    // Cáusticas visibles en aguas cristalinas poco profundas
+    // Cáusticas doradas visibles en aguas poco profundas
     float shallowMask = 1.0 - smoothstep(0.0, 0.55, depthFactor);
     float shoreCaustic = causticsPattern(vWorldPos.xz * 0.38, uTime);
-    waterCol += vec3(0.38, 0.96, 0.88) * shoreCaustic * shallowMask * 0.34;
+    waterCol += vec3(1.00, 0.84, 0.60) * shoreCaustic * shallowMask * 0.34;
 
-    // 2. Subsurface Scattering (SSS): crestas brillan en esmeralda/turquesa al recibir sol por detrás
+    // 2. Subsurface Scattering (SSS): crestas brillan en coral y albaricoque al recibir el sol de atardecer por detrás
     vec3 backLightDir = normalize(-sunDir + N * 0.48);
     float backScatter = pow(max(dot(viewDir, backLightDir), 0.0), 3.0);
     float crestThickness = smoothstep(0.32, 0.98, hNorm) * (0.45 + 0.55 * smoothstep(0.02, 0.22, vSlope));
-    vec3 sssColor = mix(vec3(0.05, 0.85, 0.62), vec3(0.18, 0.95, 0.82), shallowMask * 0.5 + 0.3);
+    vec3 sssColor = mix(vec3(0.992, 0.518, 0.341), vec3(1.00, 0.839, 0.60), shallowMask * 0.45 + 0.32);
     waterCol += sssColor * (backScatter * 0.78 + 0.16) * crestThickness;
 
     // Iluminación difusa por faceta
@@ -210,16 +211,16 @@ const GERSTNER_FRAGMENT_SHADER = `
 
     vec3 reflDir = reflect(-viewDir, N);
     float skyT = clamp(reflDir.y, 0.0, 1.0);
-    vec3 skyReflect = mix(vec3(0.98, 0.78, 0.65), vec3(0.45, 0.50, 0.78), smoothstep(0.0, 0.65, skyT));
-    waterCol = mix(waterCol, skyReflect, fresnel * 0.68);
+    vec3 skyReflect = mix(vec3(0.945, 0.761, 0.698), vec3(0.84, 0.72, 0.76), smoothstep(0.0, 0.65, skyT));
+    waterCol = mix(waterCol, skyReflect, fresnel * 0.66);
 
-    // Destello solar nítido + halo cálido modulados por Fresnel
+    // Destello solar blanco crema + camino coral-albaricoque modulados por Fresnel
     vec3 halfVec = normalize(sunDir + viewDir);
     float NdotH = max(dot(N, halfVec), 0.0);
     float sharpSpec = pow(NdotH, 220.0);
-    float softSpec  = pow(NdotH, 36.0);
-    vec3 sunSpecCol = vec3(1.0, 0.92, 0.76) * sharpSpec * (1.1 + fresnel * 1.4)
-                    + vec3(1.0, 0.82, 0.58) * softSpec * (0.18 + fresnel * 0.45);
+    float softSpec  = pow(NdotH, 34.0);
+    vec3 sunSpecCol = vec3(1.0, 0.99, 0.96) * sharpSpec * (1.15 + fresnel * 1.45)
+                    + vec3(0.992, 0.60, 0.39) * softSpec * (0.28 + fresnel * 0.52);
     waterCol += sunSpecCol;
 
     // 4. Espuma procedural (crestas por pendiente + espuma de orilla) + Oclusión ambiental bajo la espuma
@@ -238,7 +239,7 @@ const GERSTNER_FRAGMENT_SHADER = `
 
     // Oclusión ambiental sutil debajo y en los bordes de la espuma densa antes de pintar la espuma iluminada
     waterCol *= 1.0 - foamShadowAO * 0.28;
-    vec3 foamColor = mix(vec3(0.76, 0.90, 0.92), vec3(0.98, 0.99, 0.98), clamp(diff * 0.5 + 0.5, 0.0, 1.0));
+    vec3 foamColor = mix(vec3(0.76, 0.60, 0.57), vec3(1.00, 0.992, 0.969), clamp(diff * 0.5 + 0.5, 0.0, 1.0));
     waterCol = mix(waterCol, foamColor, clamp(foamMask * 0.94, 0.0, 1.0));
 
     // Niebla atmosférica hacia el horizonte
@@ -280,7 +281,7 @@ export function Ocean({ shipPosRef, oceanParamsRef }: OceanProps) {
     uFrequency: { value: DEFAULT_OCEAN_PARAMS.waveFrequency },
     uIsOuter: { value: isOuter },
     uSunDir: { value: new THREE.Vector3(-0.18, 0.14, -1).normalize() },
-    uFogColor: { value: new THREE.Color('#f3b59e') },
+    uFogColor: { value: new THREE.Color(ATARDECER_PALETTE.horizonRose) },
     uFogNear: { value: 110.0 },
     uFogFar: { value: 310.0 },
     uShores: { value: SHORE_ZONES },

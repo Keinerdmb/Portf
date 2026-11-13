@@ -20,9 +20,9 @@ export function IslandModal({
   if (!island) return null;
 
   return (
-    <div className="absolute inset-0 z-30 flex items-center justify-center bg-slate-950/70 p-4">
-      <div className="max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-xl border border-amber-300/35 bg-[#111524]/95 p-6 shadow-2xl sm:p-8">
-        <div className="flex items-start justify-between gap-4 border-b border-white/10 pb-4">
+    <div className="absolute inset-0 z-30 flex items-center justify-center bg-[#211926]/72 p-4">
+      <div className="max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-xl border border-[#FFD699]/35 bg-[#211926]/95 p-6 shadow-2xl sm:p-8">
+        <div className="flex items-start justify-between gap-4 border-b border-[#F1C2B2]/15 pb-4">
           <div>
             <p
               className="font-mono text-xs tracking-widest uppercase"
@@ -30,7 +30,7 @@ export function IslandModal({
             >
               {island.subtitle}
             </p>
-            <h2 className="mt-1 font-display text-2xl font-bold text-amber-50 sm:text-3xl">
+            <h2 className="mt-1 font-display text-2xl font-bold text-[#FFF2C6] sm:text-3xl">
               {island.name}
             </h2>
           </div>
@@ -38,36 +38,36 @@ export function IslandModal({
           <button
             type="button"
             onClick={onClose}
-            className="cursor-pointer rounded border border-white/20 px-3 py-1.5 font-mono text-xs text-slate-300 transition hover:border-amber-400 hover:text-amber-300"
+            className="cursor-pointer rounded border border-[#F1C2B2]/25 px-3 py-1.5 font-mono text-xs text-[#F7D0B3] transition hover:border-[#FFD699] hover:text-[#FFD699]"
           >
             VOLVER AL BARCO [ESC]
           </button>
         </div>
 
-        <div className="mt-6 space-y-5 text-slate-200">
+        <div className="mt-6 space-y-5 text-[#F7D0B3]">
           {islandId === 'about' && (
             <>
-              <p className="leading-relaxed text-slate-300">
-                ¡Bienvenido a bordo! Soy <strong className="text-amber-300">Keiner</strong>,
+              <p className="leading-relaxed text-[#F1C2B2]">
+                ¡Bienvenido a bordo! Soy <strong className="text-[#FFD699]">Keiner</strong>,
                 desarrollador Full-Stack enfocado en construir productos web rápidos,
                 escalables y memorables. Me apasiona unir buena arquitectura de software con
                 experiencias interactivas fluidas.
               </p>
               <div className="grid gap-3 sm:grid-cols-2">
-                <div className="rounded-lg border border-white/10 bg-slate-900/70 p-4">
-                  <p className="font-mono text-xs text-sky-300">GITHUB</p>
+                <div className="rounded-lg border border-[#F1C2B2]/15 bg-[#2D2231]/80 p-4">
+                  <p className="font-mono text-xs text-[#FFD699]">GITHUB</p>
                   <a
                     href="https://github.com/Keinerdmb"
                     target="_blank"
                     rel="noreferrer"
-                    className="mt-1 inline-block text-sm text-white underline decoration-sky-400/50 hover:text-sky-300"
+                    className="mt-1 inline-block text-sm text-[#FFF2C6] underline decoration-[#FD8457]/60 hover:text-[#FFD699]"
                   >
                     github.com/Keinerdmb
                   </a>
                 </div>
-                <div className="rounded-lg border border-white/10 bg-slate-900/70 p-4">
-                  <p className="font-mono text-xs text-sky-300">CONTACTO DIRECTO</p>
-                  <p className="mt-1 text-sm text-slate-300">
+                <div className="rounded-lg border border-[#F1C2B2]/15 bg-[#2D2231]/80 p-4">
+                  <p className="font-mono text-xs text-[#FFD699]">CONTACTO DIRECTO</p>
+                  <p className="mt-1 text-sm text-[#F1C2B2]">
                     Disponible para proyectos y colaboraciones Full-Stack.
                   </p>
                 </div>
@@ -80,19 +80,19 @@ export function IslandModal({
               {FEATURED_PROJECTS.map((proj) => (
                 <article
                   key={proj.title}
-                  className="rounded-lg border border-white/10 bg-slate-900/75 p-4 transition hover:border-amber-400/40"
+                  className="rounded-lg border border-[#F1C2B2]/15 bg-[#2D2231]/80 p-4 transition hover:border-[#FFD699]/45"
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <h3 className="text-lg font-bold text-amber-200">{proj.title}</h3>
-                    <span className="font-mono text-[11px] text-slate-400">{proj.role}</span>
+                    <h3 className="text-lg font-bold text-[#FFD699]">{proj.title}</h3>
+                    <span className="font-mono text-[11px] text-[#B5A8C9]">{proj.role}</span>
                   </div>
-                  <p className="mt-2 text-sm text-slate-300">{proj.description}</p>
+                  <p className="mt-2 text-sm text-[#F1C2B2]">{proj.description}</p>
                   <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
                     <div className="flex flex-wrap gap-1.5">
                       {proj.tech.map((t) => (
                         <span
                           key={t}
-                          className="rounded bg-white/5 px-2 py-0.5 font-mono text-[11px] text-amber-300/90"
+                          className="rounded bg-[#FFF2C6]/8 px-2 py-0.5 font-mono text-[11px] text-[#FFD699]"
                         >
                           {t}
                         </span>
@@ -103,7 +103,7 @@ export function IslandModal({
                         href={proj.repoUrl}
                         target="_blank"
                         rel="noreferrer"
-                        className="font-mono text-xs text-sky-300 hover:underline"
+                        className="font-mono text-xs text-[#FD8457] hover:underline"
                       >
                         VER REPO →
                       </a>
@@ -119,15 +119,15 @@ export function IslandModal({
               {PILOT_SKILLS.map((group) => (
                 <div
                   key={group.group}
-                  className="rounded-lg border border-white/10 bg-slate-900/70 p-4"
+                  className="rounded-lg border border-[#F1C2B2]/15 bg-[#2D2231]/80 p-4"
                 >
-                  <h3 className="font-mono text-xs font-semibold tracking-wider text-emerald-300 uppercase">
+                  <h3 className="font-mono text-xs font-semibold tracking-wider text-[#B5A8C9] uppercase">
                     {group.group}
                   </h3>
-                  <ul className="mt-3 space-y-1.5 text-sm text-slate-200">
+                  <ul className="mt-3 space-y-1.5 text-sm text-[#FFF2C6]">
                     {group.items.map((item) => (
                       <li key={item} className="flex items-center gap-2">
-                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                        <span className="h-1.5 w-1.5 rounded-full bg-[#A3A86C]" />
                         {item}
                       </li>
                     ))}
@@ -139,15 +139,15 @@ export function IslandModal({
 
           {islandId === 'minigame' && (
             <div className="space-y-4">
-              <p className="text-slate-300">
-                ¡Has llegado al <strong className="text-rose-300">Arrecife Calavera</strong>!
+              <p className="text-[#F1C2B2]">
+                ¡Has llegado al <strong className="text-[#FD8457]">Arrecife Calavera</strong>!
                 Alrededor de la isla flotan <strong>{minigameTotal} barriles explosivos</strong>.
                 Activa el desafío, navega alrededor del arrecife y haz clic sobre cada barril para
                 hundirlos con tu cañón.
               </p>
 
               {minigameScore === minigameTotal && (
-                <div className="rounded-lg border border-emerald-400/50 bg-emerald-950/40 p-4 font-mono text-sm text-emerald-300">
+                <div className="rounded-lg border border-[#A3A86C]/55 bg-[#2D2E22]/60 p-4 font-mono text-sm text-[#FFF2C6]">
                   ¡VICTORIA NAVAL! Hundiste todos los objetivos del Arrecife Calavera.
                 </div>
               )}
@@ -155,7 +155,7 @@ export function IslandModal({
               <button
                 type="button"
                 onClick={onStartMinigame}
-                className="cursor-pointer rounded-md border-2 border-rose-400 bg-rose-500/20 px-5 py-2.5 font-mono text-xs font-semibold text-rose-200 transition hover:bg-rose-500 hover:text-white"
+                className="cursor-pointer rounded-md border-2 border-[#FD8457] bg-[#FD8457]/20 px-5 py-2.5 font-mono text-xs font-semibold text-[#FFF2C6] transition hover:bg-[#FD8457] hover:text-[#211926]"
               >
                 {minigameScore === minigameTotal
                   ? 'REINICIAR DESAFÍO'

@@ -2,6 +2,7 @@ import { useFrame } from '@react-three/fiber';
 import { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { ISLANDS } from '../../data/islands';
+import { ATARDECER_PALETTE } from '../../data/palette';
 import type {
   GamePhase,
   IslandId,
@@ -200,7 +201,7 @@ vec2 causticUV = vHullWorldPos.xz + vec2(vHullLocalPos.y * 0.65, -vHullLocalPos.
 float cA = hullCausticNet(causticUV, uCausticTime);
 float cB = hullCausticNet(causticUV * 1.45 + 3.1, -uCausticTime * 0.8);
 float caustic = cA * 0.65 + cB * 0.45;
-totalEmissiveRadiance += vec3(0.24, 0.86, 0.78) * caustic * submerged * 0.62;`
+totalEmissiveRadiance += vec3(1.00, 0.80, 0.52) * caustic * submerged * 0.62;`
       );
   };
   mat.customProgramCacheKey = () => 'hull-caustics-v1';
@@ -451,7 +452,7 @@ export function PirateShip({
             hullMatRef.current = el;
             setupHullCausticsMaterial(el);
           }}
-          color="#6b4024"
+          color={ATARDECER_PALETTE.woodHull}
           flatShading
           roughness={0.82}
           side={THREE.DoubleSide}
@@ -460,7 +461,7 @@ export function PirateShip({
 
       <mesh geometry={deckGeo}>
         <meshStandardMaterial
-          color="#8f5b38"
+          color={ATARDECER_PALETTE.woodDeck}
           flatShading
           roughness={0.86}
           side={THREE.DoubleSide}
@@ -475,65 +476,70 @@ export function PirateShip({
       ].map((b) => (
         <mesh key={b.z} position={[0, b.y, b.z]}>
           <boxGeometry args={[b.w, 0.08, 0.34]} />
-          <meshStandardMaterial color="#a66f46" flatShading />
+          <meshStandardMaterial color={ATARDECER_PALETTE.woodTrim} flatShading />
         </mesh>
       ))}
 
       <mesh position={[0, 0.9, 2.15]}>
         <cylinderGeometry args={[1.05, 1.2, 0.24, 6]} />
-        <meshStandardMaterial color="#6e4326" flatShading />
+        <meshStandardMaterial color={ATARDECER_PALETTE.woodPlank} flatShading />
       </mesh>
 
       <mesh position={[0, 1.48, -5.5]} rotation={[Math.PI / 2.2, 0, 0]}>
         <cylinderGeometry args={[0.045, 0.09, 2.0, 6]} />
-        <meshStandardMaterial color="#5c361e" flatShading />
+        <meshStandardMaterial color={ATARDECER_PALETTE.woodPost} flatShading />
       </mesh>
 
       <group position={[-0.24, 1.25, -3.5]}>
         <mesh position={[0, 0.12, 0]}>
           <cylinderGeometry args={[0.1, 0.13, 0.22, 6]} />
-          <meshStandardMaterial color="#27272a" flatShading />
+          <meshStandardMaterial color={ATARDECER_PALETTE.riggingDark} flatShading />
         </mesh>
         <mesh position={[0, 0.35, 0]}>
           <cylinderGeometry args={[0.11, 0.09, 0.28, 6]} />
           <meshStandardMaterial
-            color="#fef08a"
-            emissive="#ff9f1c"
+            color={ATARDECER_PALETTE.lanternCore}
+            emissive={ATARDECER_PALETTE.lanternEmissive}
             emissiveIntensity={3.0}
             flatShading
           />
         </mesh>
         <mesh position={[0, 0.56, 0]}>
           <coneGeometry args={[0.15, 0.16, 6]} />
-          <meshStandardMaterial color="#18181b" flatShading />
+          <meshStandardMaterial color={ATARDECER_PALETTE.hatPlum} flatShading />
         </mesh>
-        <pointLight position={[0, 0.45, 0]} color="#ffab40" intensity={5.5} distance={11} />
+        <pointLight
+          position={[0, 0.45, 0]}
+          color={ATARDECER_PALETTE.lanternLight}
+          intensity={5.5}
+          distance={11}
+        />
       </group>
 
       <group position={[0, 0.78, -0.95]}>
         <mesh position={[0, 3.25, 0]}>
           <cylinderGeometry args={[0.09, 0.15, 6.5, 8]} />
-          <meshStandardMaterial color="#3d2415" flatShading />
+          <meshStandardMaterial color={ATARDECER_PALETTE.woodDark} flatShading />
         </mesh>
 
         <mesh position={[-1.4, 0.46, 0.45]}>
           <boxGeometry args={[0.14, 0.16, 0.45]} />
-          <meshStandardMaterial color="#4a2b18" flatShading />
+          <meshStandardMaterial color={ATARDECER_PALETTE.woodPost} flatShading />
         </mesh>
         <mesh position={[1.4, 0.46, 0.45]}>
           <boxGeometry args={[0.14, 0.16, 0.45]} />
-          <meshStandardMaterial color="#4a2b18" flatShading />
+          <meshStandardMaterial color={ATARDECER_PALETTE.woodPost} flatShading />
         </mesh>
 
         {[-1, 1].map((side) => (
           <group key={side}>
             <mesh position={[side * 0.74, 2.95, 0.18]} rotation={[0.04, 0, side * 0.25]}>
               <cylinderGeometry args={[0.02, 0.022, 5.2, 5]} />
-              <meshStandardMaterial color="#2a1d15" flatShading />
+              <meshStandardMaterial color={ATARDECER_PALETTE.riggingDark} flatShading />
             </mesh>
             <mesh position={[side * 0.72, 2.95, 0.48]} rotation={[0.08, 0, side * 0.24]}>
               <cylinderGeometry args={[0.018, 0.02, 5.2, 5]} />
-              <meshStandardMaterial color="#2a1d15" flatShading />
+              <meshStandardMaterial color={ATARDECER_PALETTE.riggingDark} flatShading />
             </mesh>
           </group>
         ))}
@@ -541,11 +547,11 @@ export function PirateShip({
         <group ref={boomGroupRef} position={[0, 1.55, 0]} rotation={[0, 0.56, 0]}>
           <mesh position={[2.0, 0.22, 0]} rotation={[0, 0, Math.PI / 2 - 0.1]}>
             <cylinderGeometry args={[0.055, 0.085, 4.2, 7]} />
-            <meshStandardMaterial color="#6e4226" flatShading />
+            <meshStandardMaterial color={ATARDECER_PALETTE.woodPlank} flatShading />
           </mesh>
           <mesh ref={sailMeshRef} geometry={sailGeo} position={[0.05, 0.05, 0]}>
             <meshStandardMaterial
-              color="#fff4e6"
+              color={ATARDECER_PALETTE.sailCream}
               roughness={0.82}
               flatShading
               side={THREE.DoubleSide}
@@ -556,7 +562,7 @@ export function PirateShip({
         <group position={[0, 6.45, 0]}>
           <mesh ref={flagRef} position={[0, 0, -0.45]}>
             <coneGeometry args={[0.16, 0.9, 4]} />
-            <meshStandardMaterial color="#dc2626" flatShading />
+            <meshStandardMaterial color={ATARDECER_PALETTE.coralAccent} flatShading />
           </mesh>
         </group>
       </group>
@@ -564,20 +570,20 @@ export function PirateShip({
       <group position={[0, 1.0, 1.38]}>
         <mesh position={[0, 0.36, 0]}>
           <cylinderGeometry args={[0.14, 0.22, 0.72, 6]} />
-          <meshStandardMaterial color="#3d2415" flatShading />
+          <meshStandardMaterial color={ATARDECER_PALETTE.woodDark} flatShading />
         </mesh>
         <group ref={wheelRef} position={[0, 0.75, 0.16]}>
           <mesh>
             <torusGeometry args={[0.46, 0.058, 7, 14]} />
-            <meshStandardMaterial color="#8d5b3a" flatShading />
+            <meshStandardMaterial color={ATARDECER_PALETTE.woodDeck} flatShading />
           </mesh>
           <mesh>
             <torusGeometry args={[0.24, 0.03, 6, 12]} />
-            <meshStandardMaterial color="#6e4226" flatShading />
+            <meshStandardMaterial color={ATARDECER_PALETTE.woodHull} flatShading />
           </mesh>
           <mesh rotation={[Math.PI / 2, 0, 0]}>
             <cylinderGeometry args={[0.11, 0.11, 0.13, 8]} />
-            <meshStandardMaterial color="#d97706" flatShading />
+            <meshStandardMaterial color={ATARDECER_PALETTE.sandGold} flatShading />
           </mesh>
           {[0, 1, 2, 3, 4, 5, 6, 7].map((idx) => {
             const ang = (idx * Math.PI) / 4;
@@ -585,11 +591,11 @@ export function PirateShip({
               <group key={idx} rotation={[0, 0, ang]}>
                 <mesh position={[0, 0.25, 0]}>
                   <cylinderGeometry args={[0.025, 0.035, 0.44, 6]} />
-                  <meshStandardMaterial color="#a66f46" flatShading />
+                  <meshStandardMaterial color={ATARDECER_PALETTE.woodTrim} flatShading />
                 </mesh>
                 <mesh position={[0, 0.56, 0]}>
                   <cylinderGeometry args={[0.022, 0.042, 0.19, 6]} />
-                  <meshStandardMaterial color="#c48a5a" flatShading />
+                  <meshStandardMaterial color={ATARDECER_PALETTE.sandGold} flatShading />
                 </mesh>
               </group>
             );

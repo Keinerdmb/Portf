@@ -1,4 +1,5 @@
 import type { IslandData, ProjectItem } from '../types/portfolio';
+import { ATARDECER_PALETTE } from './palette';
 
 /**
  * Coordenadas bien separadas para que navegar el océano se sienta como una travesía real.
@@ -14,7 +15,7 @@ export const ISLANDS: IslandData[] = [
     position: [-56, -64],
     collisionRadius: 12.8,
     dockRadius: 21,
-    accentColor: '#38bdf8',
+    accentColor: ATARDECER_PALETTE.apricotAccent,
     landmark: 'lighthouse',
   },
   {
@@ -26,7 +27,7 @@ export const ISLANDS: IslandData[] = [
     position: [12, -110],
     collisionRadius: 13.5,
     dockRadius: 22,
-    accentColor: '#fbbf24',
+    accentColor: ATARDECER_PALETTE.sandGold,
     landmark: 'treasure',
   },
   {
@@ -38,7 +39,7 @@ export const ISLANDS: IslandData[] = [
     position: [80, -68],
     collisionRadius: 12.8,
     dockRadius: 21,
-    accentColor: '#34d399',
+    accentColor: ATARDECER_PALETTE.lavenderAccent,
     landmark: 'observatory',
   },
   {
@@ -50,7 +51,7 @@ export const ISLANDS: IslandData[] = [
     position: [68, 22],
     collisionRadius: 12.8,
     dockRadius: 24,
-    accentColor: '#fb7185',
+    accentColor: ATARDECER_PALETTE.coralAccent,
     landmark: 'skull',
   },
 ];

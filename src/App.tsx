@@ -152,7 +152,7 @@ export function App() {
   }, [phase, nearbyIsland, activeModalIsland, mapOpen, sfxEnabled]);
 
   return (
-    <div className="relative h-screen w-screen overflow-hidden bg-[#f6bfa0]">
+    <div className="relative h-screen w-screen overflow-hidden bg-[#F1C2B2]">
       <WorldScene
         phase={phase}
         isFirstPerson={isFirstPerson}
@@ -175,7 +175,7 @@ export function App() {
 
       {phase === 'boarding' && (
         <div className="pointer-events-none absolute inset-x-0 bottom-8 z-20 text-center">
-          <span className="rounded-full border border-amber-300/35 bg-slate-950/75 px-5 py-2 font-mono text-xs tracking-widest text-amber-200">
+          <span className="rounded-full border border-[#FFD699]/45 bg-[#211926]/80 px-5 py-2 font-mono text-xs tracking-widest text-[#FFF2C6]">
             ABORDANDO EL NAVÍO...
           </span>
         </div>

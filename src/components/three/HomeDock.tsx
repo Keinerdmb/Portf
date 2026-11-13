@@ -1,6 +1,7 @@
 import { useFrame } from '@react-three/fiber';
 import { useMemo, useRef } from 'react';
 import * as THREE from 'three';
+import { ATARDECER_PALETTE } from '../../data/palette';
 
 function buildDockPalm() {
   const curve = new THREE.CatmullRomCurve3([
@@ -53,24 +54,28 @@ export function HomeDock() {
       <group position={[-7.5, 0, 12]}>
         <mesh position={[0, 0.35, 0]}>
           <cylinderGeometry args={[8.8, 11.5, 2.4, 10]} />
-          <meshStandardMaterial color="#f2d399" flatShading roughness={0.9} />
+          <meshStandardMaterial color={ATARDECER_PALETTE.sandGold} flatShading roughness={0.9} />
         </mesh>
         <mesh geometry={cliffGeo} position={[-1.5, 2.1, 1]}>
-          <meshStandardMaterial color="#52b788" flatShading roughness={0.85} />
+          <meshStandardMaterial color={ATARDECER_PALETTE.grassOlive} flatShading roughness={0.85} />
         </mesh>
         <mesh geometry={cliffGeo} position={[2.8, 1.4, -1]} scale={0.6}>
-          <meshStandardMaterial color="#8d7b9e" flatShading roughness={0.9} />
+          <meshStandardMaterial color={ATARDECER_PALETTE.rockLavender} flatShading roughness={0.9} />
         </mesh>
 
         {/* Palmera curva estilizada */}
         <group position={[-2.2, 3.2, -1]}>
           <mesh geometry={trunkGeo}>
-            <meshStandardMaterial color="#7d4f32" flatShading />
+            <meshStandardMaterial color={ATARDECER_PALETTE.woodPlank} flatShading />
           </mesh>
           <group ref={palmRef} position={[1.0, 4.0, 0.3]}>
             {[0, 1.05, 2.1, 3.15, 4.2, 5.25].map((angle) => (
               <mesh key={angle} geometry={frondGeo} rotation={[-0.18, angle, 0]}>
-                <meshStandardMaterial color="#38a377" flatShading side={THREE.DoubleSide} />
+                <meshStandardMaterial
+                  color={ATARDECER_PALETTE.palmOlive}
+                  flatShading
+                  side={THREE.DoubleSide}
+                />
               </mesh>
             ))}
           </group>
@@ -81,18 +86,18 @@ export function HomeDock() {
       <group position={[-3.1, 0.95, 4.2]}>
         <mesh position={[0, 0, 0]}>
           <boxGeometry args={[2.4, 0.22, 11.5]} />
-          <meshStandardMaterial color="#6b442a" flatShading roughness={0.85} />
+          <meshStandardMaterial color={ATARDECER_PALETTE.woodHull} flatShading roughness={0.85} />
         </mesh>
 
         {[-4.8, -1.6, 1.6, 4.8].map((pz) => (
           <group key={pz}>
             <mesh position={[-1.0, -0.8, pz]}>
               <cylinderGeometry args={[0.14, 0.16, 2.4, 6]} />
-              <meshStandardMaterial color="#4a2e1b" flatShading />
+              <meshStandardMaterial color={ATARDECER_PALETTE.woodPost} flatShading />
             </mesh>
             <mesh position={[1.0, -0.8, pz]}>
               <cylinderGeometry args={[0.14, 0.16, 2.4, 6]} />
-              <meshStandardMaterial color="#4a2e1b" flatShading />
+              <meshStandardMaterial color={ATARDECER_PALETTE.woodPost} flatShading />
             </mesh>
           </group>
         ))}
@@ -100,37 +105,42 @@ export function HomeDock() {
         {/* Pasarela hacia el barco */}
         <mesh position={[1.45, 0.08, -2.35]} rotation={[0, 0, 0.05]}>
           <boxGeometry args={[1.4, 0.12, 1.4]} />
-          <meshStandardMaterial color="#845435" flatShading />
+          <meshStandardMaterial color={ATARDECER_PALETTE.woodPlank} flatShading />
         </mesh>
 
         {/* Farol cálido del muelle */}
         <group position={[0.9, 0.12, -2.1]}>
           <mesh position={[0, 1.1, 0]}>
             <cylinderGeometry args={[0.06, 0.08, 2.2, 6]} />
-            <meshStandardMaterial color="#3d2817" flatShading />
+            <meshStandardMaterial color={ATARDECER_PALETTE.woodDark} flatShading />
           </mesh>
           <mesh position={[0, 2.25, 0]}>
             <octahedronGeometry args={[0.24, 0]} />
             <meshStandardMaterial
-              color="#fef08a"
-              emissive="#f59e0b"
+              color={ATARDECER_PALETTE.lanternCore}
+              emissive={ATARDECER_PALETTE.lanternEmissive}
               emissiveIntensity={2.5}
               flatShading
             />
           </mesh>
-          <pointLight position={[0, 2.3, 0]} color="#ffaa33" intensity={5} distance={14} />
+          <pointLight
+            position={[0, 2.3, 0]}
+            color={ATARDECER_PALETTE.lanternLight}
+            intensity={5}
+            distance={14}
+          />
         </group>
 
         <group position={[-0.9, 0.12, 3.6]}>
           <mesh position={[0, 1.0, 0]}>
             <cylinderGeometry args={[0.06, 0.08, 2.0, 6]} />
-            <meshStandardMaterial color="#3d2817" flatShading />
+            <meshStandardMaterial color={ATARDECER_PALETTE.woodDark} flatShading />
           </mesh>
           <mesh position={[0, 2.05, 0]}>
             <octahedronGeometry args={[0.22, 0]} />
             <meshStandardMaterial
-              color="#fef08a"
-              emissive="#f59e0b"
+              color={ATARDECER_PALETTE.lanternCore}
+              emissive={ATARDECER_PALETTE.lanternEmissive}
               emissiveIntensity={2.2}
               flatShading
             />

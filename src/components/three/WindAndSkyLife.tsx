@@ -2,6 +2,7 @@ import { useFrame } from '@react-three/fiber';
 import { useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { ISLANDS } from '../../data/islands';
+import { ATARDECER_PALETTE } from '../../data/palette';
 import type { OceanParams } from '../../types/portfolio';
 
 interface WindAndSkyLifeProps {
@@ -109,7 +110,7 @@ export function WindAndSkyLife({ shipPosRef, oceanParamsRef }: WindAndSkyLifePro
           }}
         >
           <boxGeometry args={[0.04, 0.04, s.len]} />
-          <meshBasicMaterial color="#fff8e7" transparent opacity={0.28} />
+          <meshBasicMaterial color={ATARDECER_PALETTE.windCream} transparent opacity={0.32} />
         </mesh>
       ))}
 
@@ -128,7 +129,7 @@ export function WindAndSkyLife({ shipPosRef, oceanParamsRef }: WindAndSkyLifePro
             position={[-0.25, 0, 0]}
           >
             <boxGeometry args={[0.5, 0.05, 0.16]} />
-            <meshBasicMaterial color="#fef3c7" />
+            <meshBasicMaterial color={ATARDECER_PALETTE.gullApricot} />
           </mesh>
           <mesh
             ref={(el) => {
@@ -137,7 +138,7 @@ export function WindAndSkyLife({ shipPosRef, oceanParamsRef }: WindAndSkyLifePro
             position={[0.25, 0, 0]}
           >
             <boxGeometry args={[0.5, 0.05, 0.16]} />
-            <meshBasicMaterial color="#fef3c7" />
+            <meshBasicMaterial color={ATARDECER_PALETTE.gullApricot} />
           </mesh>
         </group>
       ))}

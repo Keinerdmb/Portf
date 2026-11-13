@@ -2,6 +2,7 @@ import { useFrame } from '@react-three/fiber';
 import { useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { ISLANDS } from '../../data/islands';
+import { ATARDECER_PALETTE } from '../../data/palette';
 import type { IslandData, IslandId, OceanParams } from '../../types/portfolio';
 import { sampleGerstnerSurface, stepBuoyantBody } from '../../utils/oceanMath';
 
@@ -72,7 +73,7 @@ function createWoodSignTexture(label: string, accentColor: string): THREE.Canvas
   canvas.height = 144;
   const ctx = canvas.getContext('2d');
   if (ctx) {
-    ctx.fillStyle = '#4a2c18';
+    ctx.fillStyle = ATARDECER_PALETTE.woodPost;
     ctx.fillRect(0, 0, 512, 144);
 
     // Vetas sutiles de madera
@@ -84,7 +85,7 @@ function createWoodSignTexture(label: string, accentColor: string): THREE.Canvas
     ctx.lineWidth = 8;
     ctx.strokeRect(8, 8, 496, 128);
 
-    ctx.fillStyle = '#fef3c7';
+    ctx.fillStyle = ATARDECER_PALETTE.cloudCream;
     ctx.font = 'bold 54px "Space Grotesk", sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
@@ -123,7 +124,7 @@ function CurvedPalm({
   return (
     <group position={position} rotation={[0, rotationY, 0]} scale={scale}>
       <mesh geometry={trunkGeo}>
-        <meshStandardMaterial color="#6b442a" flatShading />
+        <meshStandardMaterial color={ATARDECER_PALETTE.woodPlank} flatShading />
       </mesh>
       <group ref={crownRef} position={[1.1, 4.3, 0.35]}>
         {[0, 1.05, 2.1, 3.15, 4.2, 5.25].map((angle) => (
@@ -132,7 +133,11 @@ function CurvedPalm({
             geometry={frondGeo}
             rotation={[-0.18, angle, 0]}
           >
-            <meshStandardMaterial color="#38a377" flatShading side={THREE.DoubleSide} />
+            <meshStandardMaterial
+              color={ATARDECER_PALETTE.palmOlive}
+              flatShading
+              side={THREE.DoubleSide}
+            />
           </mesh>
         ))}
       </group>
@@ -172,13 +177,17 @@ function IslandMesh({
     <group position={[island.position[0], 0, island.position[1]]}>
       {/* Playa irregular */}
       <mesh geometry={geometries.beachGeo} position={[0, 0.35, 0]}>
-        <meshStandardMaterial color="#f2d399" flatShading roughness={0.9} />
+        <meshStandardMaterial color={ATARDECER_PALETTE.sandGold} flatShading roughness={0.9} />
       </mesh>
 
-      {/* Acantilados pastel estilo Steven Universe (verde menta + roca lavanda) */}
+      {/* Acantilados pastel de paleta/atardecer.jpg (oliva dorado, terracota y lavanda) */}
       <mesh geometry={geometries.cliffGeo} position={[-1.4, 2.1, -0.5]}>
         <meshStandardMaterial
-          color={island.landmark === 'skull' ? '#6d597a' : '#52b788'}
+          color={
+            island.landmark === 'skull'
+              ? ATARDECER_PALETTE.rockBurgundy
+              : ATARDECER_PALETTE.grassOlive
+          }
           flatShading
           roughness={0.88}
         />
@@ -190,7 +199,11 @@ function IslandMesh({
         rotation={[0, 1.4, 0]}
       >
         <meshStandardMaterial
-          color={island.landmark === 'skull' ? '#51415c' : '#8d7b9e'}
+          color={
+            island.landmark === 'skull'
+              ? ATARDECER_PALETTE.rockPeriwinkle
+              : ATARDECER_PALETTE.rockLavender
+          }
           flatShading
           roughness={0.9}
         />
@@ -226,11 +239,11 @@ function IslandMesh({
       <group position={[0, 1.4, 8.6]}>
         <mesh position={[-1.45, 1.35, 0]}>
           <cylinderGeometry args={[0.1, 0.12, 2.9, 6]} />
-          <meshStandardMaterial color="#4a2e1b" flatShading />
+          <meshStandardMaterial color={ATARDECER_PALETTE.woodPost} flatShading />
         </mesh>
         <mesh position={[1.45, 1.35, 0]}>
           <cylinderGeometry args={[0.1, 0.12, 2.9, 6]} />
-          <meshStandardMaterial color="#4a2e1b" flatShading />
+          <meshStandardMaterial color={ATARDECER_PALETTE.woodPost} flatShading />
         </mesh>
         <mesh position={[0, 2.25, 0]}>
           <boxGeometry args={[4.4, 1.35, 0.16]} />
@@ -243,13 +256,13 @@ function IslandMesh({
         <group position={[2.2, 2.8, -1.2]}>
           <mesh position={[0, 3.2, 0]}>
             <cylinderGeometry args={[0.72, 1.22, 6.4, 8]} />
-            <meshStandardMaterial color="#f1f5f9" flatShading />
+            <meshStandardMaterial color={ATARDECER_PALETTE.cloudCream} flatShading />
           </mesh>
           <mesh position={[0, 6.6, 0]}>
             <cylinderGeometry args={[0.85, 0.85, 0.9, 8]} />
             <meshStandardMaterial
-              color="#38bdf8"
-              emissive="#38bdf8"
+              color={ATARDECER_PALETTE.apricotAccent}
+              emissive={ATARDECER_PALETTE.coralAccent}
               emissiveIntensity={2.2}
               flatShading
             />
@@ -257,12 +270,17 @@ function IslandMesh({
           <group ref={lighthouseLightRef} position={[0, 6.6, 0]}>
             <mesh position={[0, 0, 4.5]} rotation={[Math.PI / 2, 0, 0]}>
               <coneGeometry args={[1.6, 8.5, 6]} />
-              <meshBasicMaterial color="#bae6fd" transparent opacity={0.18} depthWrite={false} />
+              <meshBasicMaterial
+                color={ATARDECER_PALETTE.cloudApricot}
+                transparent
+                opacity={0.2}
+                depthWrite={false}
+              />
             </mesh>
           </group>
           <mesh position={[0, 7.6, 0]}>
             <coneGeometry args={[1.1, 1.2, 8]} />
-            <meshStandardMaterial color="#f47280" flatShading />
+            <meshStandardMaterial color={ATARDECER_PALETTE.rockBurgundy} flatShading />
           </mesh>
         </group>
       )}
@@ -271,14 +289,14 @@ function IslandMesh({
         <group position={[2.0, 1.65, 3.6]}>
           <mesh position={[0, 0.5, 0]}>
             <cylinderGeometry args={[1.1, 1.2, 1.0, 6]} />
-            <meshStandardMaterial color="#78350f" flatShading />
+            <meshStandardMaterial color={ATARDECER_PALETTE.woodHull} flatShading />
           </mesh>
           <mesh position={[0, 1.05, 0]} rotation={[0, 0, Math.PI / 2]}>
             <cylinderGeometry args={[0.58, 0.58, 1.9, 6]} />
             <meshStandardMaterial
-              color="#fbbf24"
-              emissive="#d97706"
-              emissiveIntensity={1.3}
+              color={ATARDECER_PALETTE.sandGold}
+              emissive={ATARDECER_PALETTE.coralAccent}
+              emissiveIntensity={1.1}
               flatShading
             />
           </mesh>
@@ -289,13 +307,13 @@ function IslandMesh({
         <group position={[0, 5.4, 0]}>
           <mesh position={[0, 1.6, 0]}>
             <cylinderGeometry args={[1.1, 1.65, 3.4, 7]} />
-            <meshStandardMaterial color="#334155" flatShading />
+            <meshStandardMaterial color={ATARDECER_PALETTE.rockPeriwinkle} flatShading />
           </mesh>
           <mesh position={[0, 3.9, 0]}>
             <octahedronGeometry args={[1.35, 0]} />
             <meshStandardMaterial
-              color="#34d399"
-              emissive="#10b981"
+              color={ATARDECER_PALETTE.lavenderAccent}
+              emissive={ATARDECER_PALETTE.rockLavender}
               emissiveIntensity={2}
               flatShading
             />
@@ -307,13 +325,13 @@ function IslandMesh({
         <group position={[0, 5.6, 0]}>
           <mesh position={[0, 1.4, 0]} scale={[1, 1.15, 1]}>
             <dodecahedronGeometry args={[2.6, 0]} />
-            <meshStandardMaterial color="#cbd5e1" flatShading />
+            <meshStandardMaterial color={ATARDECER_PALETTE.cloudApricot} flatShading />
           </mesh>
           <mesh position={[-0.75, 1.6, 1.95]}>
             <octahedronGeometry args={[0.42, 0]} />
             <meshStandardMaterial
-              color="#fb7185"
-              emissive="#e11d48"
+              color={ATARDECER_PALETTE.coralAccent}
+              emissive={ATARDECER_PALETTE.rockBurgundy}
               emissiveIntensity={2.4}
               flatShading
             />
@@ -321,8 +339,8 @@ function IslandMesh({
           <mesh position={[0.75, 1.6, 1.95]}>
             <octahedronGeometry args={[0.42, 0]} />
             <meshStandardMaterial
-              color="#fb7185"
-              emissive="#e11d48"
+              color={ATARDECER_PALETTE.coralAccent}
+              emissive={ATARDECER_PALETTE.rockBurgundy}
               emissiveIntensity={2.4}
               flatShading
             />
@@ -396,13 +414,13 @@ function FloatingBarrel({
     >
       <mesh>
         <cylinderGeometry args={[0.92, 0.92, 1.55, 8]} />
-        <meshStandardMaterial color="#b45309" flatShading />
+        <meshStandardMaterial color={ATARDECER_PALETTE.woodHull} flatShading />
       </mesh>
       <mesh position={[0, 1.0, 0]}>
         <octahedronGeometry args={[0.58, 0]} />
         <meshStandardMaterial
-          color="#fb7185"
-          emissive="#f43f5e"
+          color={ATARDECER_PALETTE.coralAccent}
+          emissive={ATARDECER_PALETTE.rockBurgundy}
           emissiveIntensity={minigameActive ? 2.6 : 0.9}
           flatShading
         />
@@ -450,11 +468,11 @@ function BuoyantCrate({
     <group ref={crateRef} position={[baseX, 0.1, baseZ]}>
       <mesh>
         <boxGeometry args={[1.35, 1.0, 1.35]} />
-        <meshStandardMaterial color="#a66f46" flatShading />
+        <meshStandardMaterial color={ATARDECER_PALETTE.woodTrim} flatShading />
       </mesh>
       <mesh position={[0, 0.6, 0]}>
         <cylinderGeometry args={[0.16, 0.2, 0.55, 6]} />
-        <meshStandardMaterial color="#f59e0b" flatShading />
+        <meshStandardMaterial color={ATARDECER_PALETTE.apricotAccent} flatShading />
       </mesh>
     </group>
   );

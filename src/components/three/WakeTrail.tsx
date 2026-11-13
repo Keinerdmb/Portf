@@ -1,6 +1,7 @@
 import { useFrame } from '@react-three/fiber';
 import { useRef } from 'react';
 import * as THREE from 'three';
+import { ATARDECER_PALETTE } from '../../data/palette';
 import type { OceanParams, ShipTelemetry } from '../../types/portfolio';
 import { sampleGerstnerSurface } from '../../utils/oceanMath';
 
@@ -213,7 +214,12 @@ export function WakeTrail({ shipTelemetryRef, oceanParamsRef }: WakeTrailProps) 
           rotation={[-Math.PI / 2, 0, 0]}
         >
           <circleGeometry args={[0.62, 7]} />
-          <meshBasicMaterial color="#effcf9" transparent opacity={0.5} depthWrite={false} />
+          <meshBasicMaterial
+            color={ATARDECER_PALETTE.foamWhite}
+            transparent
+            opacity={0.5}
+            depthWrite={false}
+          />
         </mesh>
       ))}
       {Array.from({ length: SPRAY_COUNT }).map((_, idx) => (
@@ -225,7 +231,12 @@ export function WakeTrail({ shipTelemetryRef, oceanParamsRef }: WakeTrailProps) 
           visible={false}
         >
           <icosahedronGeometry args={[0.16, 0]} />
-          <meshBasicMaterial color="#f2fcff" transparent opacity={0.75} depthWrite={false} />
+          <meshBasicMaterial
+            color={ATARDECER_PALETTE.sprayCream}
+            transparent
+            opacity={0.75}
+            depthWrite={false}
+          />
         </mesh>
       ))}
     </group>
