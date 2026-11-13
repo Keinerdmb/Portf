@@ -142,6 +142,78 @@ function buildSculptedBoatGeometries() {
   return { hullGeo, deckGeo, sailGeo };
 }
 
+interface HullCausticsUniforms {
+  uCausticTime: { value: number };
+  uWaterlineY: { value: number };
+}
+
+function setupHullCausticsMaterial(mat: THREE.MeshStandardMaterial | null) {
+  if (!mat || mat.userData.causticsUniforms) return;
+
+  const uniforms: HullCausticsUniforms = {
+    uCausticTime: { value: 0 },
+    uWaterlineY: { value: 0 },
+  };
+  mat.userData.causticsUniforms = uniforms;
+  mat.onBeforeCompile = (shader) => {
+    shader.uniforms.uCausticTime = uniforms.uCausticTime;
+    shader.uniforms.uWaterlineY = uniforms.uWaterlineY;
+    shader.vertexShader = shader.vertexShader
+      .replace(
+        '#include <common>',
+        `#include <common>
+varying vec3 vHullWorldPos;
+varying vec3 vHullLocalPos;`
+      )
+      .replace(
+        '#include <project_vertex>',
+        `#include <project_vertex>
+vHullLocalPos = position;
+vHullWorldPos = (modelMatrix * vec4(transformed, 1.0)).xyz;`
+      );
+    shader.fragmentShader = shader.fragmentShader
+      .replace(
+        '#include <common>',
+        `#include <common>
+uniform float uCausticTime;
+uniform float uWaterlineY;
+varying vec3 vHullWorldPos;
+varying vec3 vHullLocalPos;
+
+float hullCausticNet(vec2 p, float t) {
+  vec2 a = p * 2.15 + vec2(t * 0.42, -t * 0.31);
+  vec2 b = p * 2.75 + vec2(-t * 0.36, t * 0.48);
+  float w1 = sin(a.x * 2.4 + cos(a.y * 2.1 - t * 1.1));
+  float w2 = sin(b.y * 2.7 - sin(b.x * 2.2 + t * 0.95));
+  float ridg = 1.0 - abs(w1 + w2) * 0.5;
+  return pow(clamp(ridg, 0.0, 1.0), 4.0);
+}`
+      )
+      .replace(
+        '#include <emissivemap_fragment>',
+        `#include <emissivemap_fragment>
+float depthBelowWater = uWaterlineY - vHullWorldPos.y;
+float wetBand = smoothstep(-0.32, 0.08, depthBelowWater);
+diffuseColor.rgb *= mix(1.0, 0.72, wetBand);
+float submerged = smoothstep(-0.18, 0.25, depthBelowWater) * (1.0 - smoothstep(1.2, 2.4, depthBelowWater));
+vec2 causticUV = vHullWorldPos.xz + vec2(vHullLocalPos.y * 0.65, -vHullLocalPos.y * 0.45);
+float cA = hullCausticNet(causticUV, uCausticTime);
+float cB = hullCausticNet(causticUV * 1.45 + 3.1, -uCausticTime * 0.8);
+float caustic = cA * 0.65 + cB * 0.45;
+totalEmissiveRadiance += vec3(0.24, 0.86, 0.78) * caustic * submerged * 0.62;`
+      );
+  };
+  mat.customProgramCacheKey = () => 'hull-caustics-v1';
+  mat.needsUpdate = true;
+}
+
+function syncHullCaustics(mat: THREE.MeshStandardMaterial | null, time: number, waterlineY: number) {
+  const uniforms = mat?.userData.causticsUniforms as HullCausticsUniforms | undefined;
+  if (!uniforms) return;
+  uniforms.uCausticTime.value = time;
+  uniforms.uWaterlineY.value = waterlineY;
+}
+
 export function PirateShip({
   phase,
   isFirstPerson,
@@ -163,6 +235,9 @@ export function PirateShip({
   const lastNearbyRef = useRef<IslandId | null>(null);
   const lastCollisionTimeRef = useRef(0);
   const impactRollRef = useRef(0);
+  const delayedWavePitchRef = useRef(0);
+  const delayedWaveRollRef = useRef(0);
+  const hullMatRef = useRef<THREE.MeshStandardMaterial>(null);
 
   const { hullGeo, deckGeo, sailGeo } = useMemo(() => buildSculptedBoatGeometries(), []);
 
@@ -265,40 +340,62 @@ export function PirateShip({
     shipPosRef.current.x = state.x;
     shipPosRef.current.z = state.z;
 
-    // Flotabilidad de cuerpo rígido sobre 4 puntos del casco usando Gerstner
+    // Muestreo en 4 puntos (proa, popa, babor, estribor) + inercia pesada de galeón
     const sinH = Math.sin(state.heading);
     const cosH = Math.cos(state.heading);
 
-    const bowS = sampleGerstnerSurface(state.x - sinH * 3.5, state.z - cosH * 3.5, t, params);
-    const sternS = sampleGerstnerSurface(state.x + sinH * 2.5, state.z + cosH * 2.5, t, params);
-    const portS = sampleGerstnerSurface(state.x - cosH * 1.2, state.z + sinH * 1.2, t, params);
-    const starS = sampleGerstnerSurface(state.x + cosH * 1.2, state.z - sinH * 1.2, t, params);
+    const bowS = sampleGerstnerSurface(state.x - sinH * 3.8, state.z - cosH * 3.8, t, params);
+    const sternS = sampleGerstnerSurface(state.x + sinH * 2.8, state.z + cosH * 2.8, t, params);
+    const portS = sampleGerstnerSurface(state.x - cosH * 1.35, state.z + sinH * 1.35, t, params);
+    const starS = sampleGerstnerSurface(state.x + cosH * 1.35, state.z - sinH * 1.35, t, params);
 
     const avgWaveY = (bowS.height + sternS.height + portS.height + starS.height) * 0.25;
-    const buoyant = stepBuoyantBody(state.y, state.velY, avgWaveY, dt, 24, 5.2, 0.14);
+    // Rigidez reducida y mayor calado para simular la gran masa de madera
+    const buoyant = stepBuoyantBody(state.y, state.velY, avgWaveY, dt, 15.5, 4.3, 0.04);
     state.y = buoyant.y;
     state.velY = buoyant.velY;
 
-    const wavePitch = Math.atan2(bowS.height - sternS.height, 6.0);
-    const waveRoll = Math.atan2(portS.height - starS.height, 2.4);
-    impactRollRef.current = THREE.MathUtils.lerp(impactRollRef.current, 0, dt * 4);
+    const rawWavePitch = Math.atan2(bowS.height - sternS.height, 6.6);
+    const rawWaveRoll = Math.atan2(starS.height - portS.height, 2.7);
+
+    // Ligero retraso entre el impacto de la ola y la respuesta angular del casco
+    delayedWavePitchRef.current = THREE.MathUtils.lerp(
+      delayedWavePitchRef.current,
+      rawWavePitch,
+      dt * 3.1
+    );
+    delayedWaveRollRef.current = THREE.MathUtils.lerp(
+      delayedWaveRollRef.current,
+      rawWaveRoll,
+      dt * 3.4
+    );
+
+    const speedNorm = THREE.MathUtils.clamp(state.speed / 16, -0.6, 1.35);
+    const bowLift = speedNorm * 0.045;
+    // Escora lateral pronunciada al girar el timón a alta velocidad
+    const rudderHeelTarget = -state.steerAngle * speedNorm * Math.abs(speedNorm) * 0.165;
+
+    const targetPitch = delayedWavePitchRef.current * 0.72 + bowLift;
+    const targetRoll = delayedWaveRollRef.current * 0.68 + rudderHeelTarget;
+
+    // Centro de gravedad bajo (par adrizante de quilla) + amortiguación angular alta (angular drag)
+    const pitchTorque = (targetPitch - state.pitch) * 11.5 - state.pitchVel * 4.4;
+    const rollTorque =
+      (targetRoll - state.roll) * 10.5 - state.rollVel * 4.6 + impactRollRef.current * 9.0;
+
+    state.pitchVel += pitchTorque * dt;
+    state.rollVel += rollTorque * dt;
+    state.pitch = THREE.MathUtils.clamp(state.pitch + state.pitchVel * dt, -0.34, 0.34);
+    state.roll = THREE.MathUtils.clamp(state.roll + state.rollVel * dt, -0.42, 0.42);
+    impactRollRef.current = THREE.MathUtils.lerp(impactRollRef.current, 0, dt * 5.0);
+
+    syncHullCaustics(hullMatRef.current, t, avgWaveY + 0.18);
 
     if (shipGroupRef.current) {
-      const targetPitch = wavePitch * 0.65 + (state.speed / 20) * 0.035;
-      const targetRoll = waveRoll * 0.6 - state.steerAngle * 0.08 + impactRollRef.current;
-
       shipGroupRef.current.position.set(state.x, state.y, state.z);
-      shipGroupRef.current.rotation.x = THREE.MathUtils.lerp(
-        shipGroupRef.current.rotation.x,
-        targetPitch,
-        dt * 6.5
-      );
+      shipGroupRef.current.rotation.x = state.pitch;
       shipGroupRef.current.rotation.y = state.heading;
-      shipGroupRef.current.rotation.z = THREE.MathUtils.lerp(
-        shipGroupRef.current.rotation.z,
-        targetRoll,
-        dt * 6.5
-      );
+      shipGroupRef.current.rotation.z = state.roll;
     }
 
     if (wheelRef.current) {
@@ -350,6 +447,10 @@ export function PirateShip({
     <group ref={shipGroupRef} position={[0, 0, 0]}>
       <mesh geometry={hullGeo}>
         <meshStandardMaterial
+          ref={(el) => {
+            hullMatRef.current = el;
+            setupHullCausticsMaterial(el);
+          }}
           color="#6b4024"
           flatShading
           roughness={0.82}

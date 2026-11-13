@@ -34,6 +34,10 @@ export interface ShipTelemetry {
   z: number;
   /** Ángulo de dirección en radianes (0 = mirando hacia -Z / Norte) */
   heading: number;
+  pitch: number;
+  pitchVel: number;
+  roll: number;
+  rollVel: number;
   speed: number;
   steerAngle: number;
   /** Factor de impulso de viento actual (-1 contra viento, +1 a favor) */

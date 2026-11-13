@@ -1,6 +1,7 @@
 import { useFrame } from '@react-three/fiber';
 import { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
+import { ISLANDS } from '../../data/islands';
 import type { OceanParams } from '../../types/portfolio';
 import { DEFAULT_OCEAN_PARAMS } from '../../utils/oceanMath';
 
@@ -16,6 +17,14 @@ const OUTER_SIZE = 780;
 const OUTER_SEGMENTS = 30;
 const OUTER_HOLE_LIMIT = 52;
 
+// Zonas de poca profundidad (x, z, radio de orilla) para gradiente cristalino -> abisal
+const SHORE_ZONES: THREE.Vector3[] = [
+  new THREE.Vector3(-7.5, 12.0, 10.5),
+  ...ISLANDS.map(
+    (island) => new THREE.Vector3(island.position[0], island.position[1], island.collisionRadius)
+  ),
+];
+
 const GERSTNER_VERTEX_SHADER = `
   uniform float uTime;
   uniform float uWindSpeed;
@@ -26,6 +35,7 @@ const GERSTNER_VERTEX_SHADER = `
   uniform float uIsOuter;
 
   varying vec3 vWorldPos;
+  varying vec3 vSmoothNormal;
   varying float vWaveHeight;
   varying float vSlope;
 
@@ -67,10 +77,10 @@ const GERSTNER_VERTEX_SHADER = `
   void main() {
     vec4 worldBase = modelMatrix * vec4(position, 1.0);
 
-    // En la malla exterior mantenemos hundido el centro debajo de la malla detallada
     if (uIsOuter > 0.5 && abs(position.x) < ${OUTER_HOLE_LIMIT.toFixed(1)} && abs(position.y) < ${OUTER_HOLE_LIMIT.toFixed(1)}) {
       worldBase.y = -4.5;
       vWorldPos = worldBase.xyz;
+      vSmoothNormal = vec3(0.0, 1.0, 0.0);
       vWaveHeight = -4.5;
       vSlope = 0.0;
       gl_Position = projectionMatrix * viewMatrix * worldBase;
@@ -100,6 +110,7 @@ const GERSTNER_VERTEX_SHADER = `
     vec3 finalNormal = normalize(norm);
 
     vWorldPos = displacedWorld;
+    vSmoothNormal = finalNormal;
     vWaveHeight = disp.y;
     vSlope = max(0.0, 1.0 - finalNormal.y);
 
@@ -116,8 +127,10 @@ const GERSTNER_FRAGMENT_SHADER = `
   uniform vec3 uFogColor;
   uniform float uFogNear;
   uniform float uFogFar;
+  uniform vec3 uShores[5];
 
   varying vec3 vWorldPos;
+  varying vec3 vSmoothNormal;
   varying float vWaveHeight;
   varying float vSlope;
 
@@ -138,51 +151,97 @@ const GERSTNER_FRAGMENT_SHADER = `
     return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
   }
 
+  // Cáusticas procedurales en zonas poco profundas y orillas
+  float causticsPattern(vec2 uv, float t) {
+    float c1 = sin(uv.x * 2.1 + t * 1.4 + sin(uv.y * 1.7 - t));
+    float c2 = cos(uv.y * 2.4 - t * 1.2 + cos(uv.x * 1.9 + t * 1.1));
+    float net = abs(c1 + c2) * 0.5;
+    return pow(1.0 - clamp(net, 0.0, 1.0), 3.2);
+  }
+
   void main() {
-    // Normal facetada por triángulo en GPU (dFdx/dFdy) con guarda anti-NaN
+    // Combinamos normal facetada por triángulo (dFdx/dFdy) + normal suave Gerstner para reflejos nítidos
     vec3 dpdx = dFdx(vWorldPos);
     vec3 dpdy = dFdy(vWorldPos);
     vec3 flatNormal = normalize(cross(dpdx, dpdy) + vec3(0.0, 0.0001, 0.0));
     if (flatNormal.y < 0.0) flatNormal = -flatNormal;
+    vec3 N = normalize(mix(flatNormal, normalize(vSmoothNormal), 0.32));
 
     vec3 viewDir = normalize(cameraPosition - vWorldPos);
     vec3 sunDir = normalize(uSunDir);
 
-    // Paleta Steven Universe: valles turquesa profundos -> aqua -> crestas menta
+    // 1. Gradiente de profundidad: cristalina cerca de islas/costas -> azul abisal profundo en mar abierto
+    float minShoreDist = 999.0;
+    for (int i = 0; i < 5; i++) {
+      float d = length(vWorldPos.xz - uShores[i].xy) - uShores[i].z;
+      minShoreDist = min(minShoreDist, d);
+    }
+    float depthFactor = clamp(minShoreDist / 26.0, 0.0, 1.0);
+
     float hSpan = max(0.25, uMaxHeight);
     float hNorm = clamp((vWaveHeight + hSpan * 0.5) / hSpan, 0.0, 1.0);
-    vec3 deepColor = vec3(0.06, 0.44, 0.54);
-    vec3 midColor  = vec3(0.14, 0.69, 0.73);
-    vec3 crestColor = vec3(0.38, 0.88, 0.85);
 
-    vec3 waterCol = mix(deepColor, midColor, smoothstep(0.12, 0.58, hNorm));
-    waterCol = mix(waterCol, crestColor, smoothstep(0.58, 1.0, hNorm));
+    vec3 shallowCrystal = vec3(0.24, 0.85, 0.78);
+    vec3 midOceanTeal   = vec3(0.05, 0.42, 0.54);
+    vec3 abyssalDeep    = vec3(0.015, 0.11, 0.25);
 
-    // Iluminación difusa por faceta + reflejo especular dorado del sol
+    vec3 deepWater = mix(midOceanTeal, abyssalDeep, smoothstep(0.2, 1.0, depthFactor) * (1.0 - hNorm * 0.55));
+    vec3 waterCol  = mix(shallowCrystal, deepWater, smoothstep(0.0, 0.78, depthFactor));
+
+    // Cáusticas visibles en aguas cristalinas poco profundas
+    float shallowMask = 1.0 - smoothstep(0.0, 0.55, depthFactor);
+    float shoreCaustic = causticsPattern(vWorldPos.xz * 0.38, uTime);
+    waterCol += vec3(0.38, 0.96, 0.88) * shoreCaustic * shallowMask * 0.34;
+
+    // 2. Subsurface Scattering (SSS): crestas brillan en esmeralda/turquesa al recibir sol por detrás
+    vec3 backLightDir = normalize(-sunDir + N * 0.48);
+    float backScatter = pow(max(dot(viewDir, backLightDir), 0.0), 3.0);
+    float crestThickness = smoothstep(0.32, 0.98, hNorm) * (0.45 + 0.55 * smoothstep(0.02, 0.22, vSlope));
+    vec3 sssColor = mix(vec3(0.05, 0.85, 0.62), vec3(0.18, 0.95, 0.82), shallowMask * 0.5 + 0.3);
+    waterCol += sssColor * (backScatter * 0.78 + 0.16) * crestThickness;
+
+    // Iluminación difusa por faceta
     float diff = max(dot(flatNormal, sunDir), 0.0);
-    waterCol *= 0.72 + diff * 0.48;
+    waterCol *= 0.68 + diff * 0.52;
 
+    // 3. Reflejos especulares nítidos basados en ángulo de Fresnel (Schlick)
+    float NdotV = max(dot(N, viewDir), 0.0);
+    float fresnel = 0.02 + 0.98 * pow(1.0 - NdotV, 5.0);
+
+    vec3 reflDir = reflect(-viewDir, N);
+    float skyT = clamp(reflDir.y, 0.0, 1.0);
+    vec3 skyReflect = mix(vec3(0.98, 0.78, 0.65), vec3(0.45, 0.50, 0.78), smoothstep(0.0, 0.65, skyT));
+    waterCol = mix(waterCol, skyReflect, fresnel * 0.68);
+
+    // Destello solar nítido + halo cálido modulados por Fresnel
     vec3 halfVec = normalize(sunDir + viewDir);
-    float spec = pow(max(dot(flatNormal, halfVec), 0.0), 64.0);
-    waterCol += vec3(1.0, 0.89, 0.66) * spec * 0.75;
+    float NdotH = max(dot(N, halfVec), 0.0);
+    float sharpSpec = pow(NdotH, 220.0);
+    float softSpec  = pow(NdotH, 36.0);
+    vec3 sunSpecCol = vec3(1.0, 0.92, 0.76) * sharpSpec * (1.1 + fresnel * 1.4)
+                    + vec3(1.0, 0.82, 0.58) * softSpec * (0.18 + fresnel * 0.45);
+    waterCol += sunSpecCol;
 
-    // Espuma procedural (foam) en crestas calculada por pendiente real de la ola (vSlope)
+    // 4. Espuma procedural (crestas por pendiente + espuma de orilla) + Oclusión ambiental bajo la espuma
     vec2 currentVec = vec2(sin(uCurrentAngle), -cos(uCurrentAngle));
-    vec2 foamUV = vWorldPos.xz * 0.55 - currentVec * uTime * 0.85;
-    float n1 = valueNoise(foamUV);
-    float n2 = valueNoise(foamUV * 2.3 + 4.1);
-    float foamPattern = n1 * 0.65 + n2 * 0.35;
+    vec2 foamUV = vWorldPos.xz * 0.58 - currentVec * uTime * 0.85;
+    float foamPattern = valueNoise(foamUV) * 0.65 + valueNoise(foamUV * 2.4 + 4.1) * 0.35;
 
     float windFoamBoost = clamp(uWindSpeed / 15.0, 0.6, 1.45);
     float slopeFoam = smoothstep(0.055, 0.24, vSlope * windFoamBoost);
     float crestFoam = smoothstep(0.45, 0.92, hNorm);
-    float foamIntensity = clamp((slopeFoam * 0.85 + crestFoam * 0.45), 0.0, 1.0);
-    float foamMask = smoothstep(0.42, 0.68, foamPattern + foamIntensity * 0.48) * foamIntensity;
+    float shoreRing = smoothstep(3.2, -0.4, minShoreDist);
+    float foamIntensity = clamp(slopeFoam * 0.85 + crestFoam * 0.45 + shoreRing * 0.9, 0.0, 1.0);
 
-    vec3 foamColor = vec3(0.95, 0.99, 0.98);
-    waterCol = mix(waterCol, foamColor, clamp(foamMask * 0.92, 0.0, 1.0));
+    float foamMask = smoothstep(0.40, 0.68, foamPattern + foamIntensity * 0.48) * foamIntensity;
+    float foamShadowAO = smoothstep(0.15, 0.65, foamIntensity) * (1.0 - foamMask * 0.5);
 
-    // Niebla atmosférica hacia el color del horizonte
+    // Oclusión ambiental sutil debajo y en los bordes de la espuma densa antes de pintar la espuma iluminada
+    waterCol *= 1.0 - foamShadowAO * 0.28;
+    vec3 foamColor = mix(vec3(0.76, 0.90, 0.92), vec3(0.98, 0.99, 0.98), clamp(diff * 0.5 + 0.5, 0.0, 1.0));
+    waterCol = mix(waterCol, foamColor, clamp(foamMask * 0.94, 0.0, 1.0));
+
+    // Niebla atmosférica hacia el horizonte
     float dist = length(cameraPosition - vWorldPos);
     float fogFactor = smoothstep(uFogNear, uFogFar, dist);
     vec3 finalColor = mix(waterCol, uFogColor, fogFactor);
@@ -212,39 +271,23 @@ export function Ocean({ shipPosRef, oceanParamsRef }: OceanProps) {
   const innerMatRef = useRef<THREE.ShaderMaterial>(null);
   const outerMatRef = useRef<THREE.ShaderMaterial>(null);
 
-  const innerUniforms = useMemo(
-    () => ({
-      uTime: { value: 0 },
-      uWindSpeed: { value: DEFAULT_OCEAN_PARAMS.windSpeed },
-      uCurrentAngle: { value: DEFAULT_OCEAN_PARAMS.currentAngle },
-      uMinHeight: { value: DEFAULT_OCEAN_PARAMS.minWaveHeight },
-      uMaxHeight: { value: DEFAULT_OCEAN_PARAMS.maxWaveHeight },
-      uFrequency: { value: DEFAULT_OCEAN_PARAMS.waveFrequency },
-      uIsOuter: { value: 0.0 },
-      uSunDir: { value: new THREE.Vector3(-0.18, 0.14, -1).normalize() },
-      uFogColor: { value: new THREE.Color('#f3b59e') },
-      uFogNear: { value: 110.0 },
-      uFogFar: { value: 310.0 },
-    }),
-    []
-  );
+  const createUniforms = (isOuter: number) => ({
+    uTime: { value: 0 },
+    uWindSpeed: { value: DEFAULT_OCEAN_PARAMS.windSpeed },
+    uCurrentAngle: { value: DEFAULT_OCEAN_PARAMS.currentAngle },
+    uMinHeight: { value: DEFAULT_OCEAN_PARAMS.minWaveHeight },
+    uMaxHeight: { value: DEFAULT_OCEAN_PARAMS.maxWaveHeight },
+    uFrequency: { value: DEFAULT_OCEAN_PARAMS.waveFrequency },
+    uIsOuter: { value: isOuter },
+    uSunDir: { value: new THREE.Vector3(-0.18, 0.14, -1).normalize() },
+    uFogColor: { value: new THREE.Color('#f3b59e') },
+    uFogNear: { value: 110.0 },
+    uFogFar: { value: 310.0 },
+    uShores: { value: SHORE_ZONES },
+  });
 
-  const outerUniforms = useMemo(
-    () => ({
-      uTime: { value: 0 },
-      uWindSpeed: { value: DEFAULT_OCEAN_PARAMS.windSpeed },
-      uCurrentAngle: { value: DEFAULT_OCEAN_PARAMS.currentAngle },
-      uMinHeight: { value: DEFAULT_OCEAN_PARAMS.minWaveHeight },
-      uMaxHeight: { value: DEFAULT_OCEAN_PARAMS.maxWaveHeight },
-      uFrequency: { value: DEFAULT_OCEAN_PARAMS.waveFrequency },
-      uIsOuter: { value: 1.0 },
-      uSunDir: { value: new THREE.Vector3(-0.18, 0.14, -1).normalize() },
-      uFogColor: { value: new THREE.Color('#f3b59e') },
-      uFogNear: { value: 110.0 },
-      uFogFar: { value: 310.0 },
-    }),
-    []
-  );
+  const innerUniforms = useMemo(() => createUniforms(0.0), []);
+  const outerUniforms = useMemo(() => createUniforms(1.0), []);
 
   useEffect(() => {
     if (innerRef.current) {
