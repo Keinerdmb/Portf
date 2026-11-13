@@ -1,7 +1,7 @@
 import { useFrame, useThree } from '@react-three/fiber';
 import { useRef } from 'react';
 import * as THREE from 'three';
-import type { GamePhase, OceanParams, ShipTelemetry } from '../../types/portfolio';
+import type { DynamicWindState, GamePhase, ShipTelemetry } from '../../types/portfolio';
 import { GERSTNER_WAVE_SAMPLE_GLSL } from '../../utils/gerstnerGlsl';
 import {
   MAX_SAND_STAMPS,
@@ -198,7 +198,7 @@ function createSandSim(gl: THREE.WebGLRenderer): SandSimInstance {
 
 interface SandSimulationProps {
   phase: GamePhase;
-  oceanParamsRef: React.RefObject<OceanParams>;
+  liveWindRef: React.RefObject<DynamicWindState>;
   shipTelemetryRef: React.RefObject<ShipTelemetry>;
   playerPosRef: React.RefObject<THREE.Vector3>;
   stampQueueRef: React.RefObject<SandStampItem[]>;
@@ -209,7 +209,7 @@ const _prevClearColor = new THREE.Color();
 
 export function SandSimulation({
   phase,
-  oceanParamsRef,
+  liveWindRef,
   shipTelemetryRef,
   playerPosRef,
   stampQueueRef,
@@ -218,9 +218,9 @@ export function SandSimulation({
   const { gl } = useThree();
   const simRef = useRef<SandSimInstance | null>(null);
 
-  useFrame(({ clock }, rawDelta) => {
+  useFrame((_, rawDelta) => {
     const dt = Math.min(rawDelta, 0.05);
-    const t = clock.getElapsedTime();
+    const waveTime = liveWindRef.current.waveTime;
 
     if (!simRef.current) {
       simRef.current = createSandSim(gl);
@@ -300,7 +300,7 @@ export function SandSimulation({
       }
     }
 
-    const params = oceanParamsRef.current;
+    const params = liveWindRef.current.liveOcean;
     const readIdx = sim.pingIdx;
     const writeIdx = 1 - readIdx;
 
@@ -321,7 +321,7 @@ export function SandSimulation({
 
     sim.mat.uniforms.uPrevTex.value = sim.rt[readIdx].texture;
     sim.mat.uniforms.uDt.value = dt;
-    sim.mat.uniforms.uTime.value = t;
+    sim.mat.uniforms.uTime.value = waveTime;
     sim.mat.uniforms.uWindSpeed.value = params.windSpeed;
     sim.mat.uniforms.uCurrentAngle.value = params.currentAngle;
     sim.mat.uniforms.uMinHeight.value = params.minWaveHeight;
@@ -334,7 +334,7 @@ export function SandSimulation({
 
     sim.pingIdx = writeIdx;
     sandStateRef.current.texture = sim.rt[writeIdx].texture;
-    sandStateRef.current.time = t;
+    sandStateRef.current.time = waveTime;
   });
 
   return null;

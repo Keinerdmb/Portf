@@ -43,7 +43,6 @@ export function sampleGerstnerSurface(
   params: OceanParams
 ): GerstnerSample {
   const freq = Math.max(0.35, params.waveFrequency);
-  const windFactor = 0.65 + (params.windSpeed / 14) * 0.5;
   const minH = Math.min(params.minWaveHeight, params.maxWaveHeight);
   const maxH = Math.max(params.minWaveHeight, params.maxWaveHeight);
 
@@ -64,7 +63,7 @@ export function sampleGerstnerSurface(
 
     const wavelength = w.wavelength / freq;
     const k = (Math.PI * 2) / wavelength;
-    const omega = Math.sqrt(9.81 * k) * windFactor;
+    const omega = Math.sqrt(9.81 * k);
     const amp = totalHeight * 0.5 * w.weight;
     const q = Math.min(w.steepness, 0.72 / (k * Math.max(amp, 0.01) * 4.0));
 

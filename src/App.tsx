@@ -6,6 +6,7 @@ import { TitleOverlay } from './components/hud/TitleOverlay';
 import { WorldMapModal } from './components/hud/WorldMapModal';
 import { WorldScene } from './components/three/WorldScene';
 import type {
+  DynamicWindState,
   GamePhase,
   IslandData,
   IslandId,
@@ -13,6 +14,7 @@ import type {
   ShipTelemetry,
 } from './types/portfolio';
 import { DEFAULT_OCEAN_PARAMS } from './utils/oceanMath';
+import { createInitialWindState } from './utils/windMath';
 import {
   playCannonHit,
   playHullBump,
@@ -37,8 +39,10 @@ export function App() {
   const [mapOpen, setMapOpen] = useState(false);
 
   const [oceanPanelOpen, setOceanPanelOpen] = useState(false);
+  const [sailsFurled, setSailsFurled] = useState(false);
   const [oceanParams, setOceanParams] = useState<OceanParams>(DEFAULT_OCEAN_PARAMS);
   const oceanParamsRef = useRef<OceanParams>(DEFAULT_OCEAN_PARAMS);
+  const liveWindRef = useRef<DynamicWindState>(createInitialWindState(DEFAULT_OCEAN_PARAMS));
 
   const [minigameActive, setMinigameActive] = useState(false);
   const [hitTargets, setHitTargets] = useState<number[]>([]);
@@ -56,6 +60,8 @@ export function App() {
     speed: 0,
     steerAngle: 0,
     windAlignment: 0,
+    gustBoost: 0,
+    sailDeployed: true,
   });
 
   const mobileInputRef = useRef({ forward: 0, turn: 0 });
@@ -144,6 +150,17 @@ export function App() {
       ) {
         playTone(sfxEnabled, 520, 0.08);
         setActiveModalIsland(nearbyIsland);
+        return;
+      }
+
+      if (
+        e.code === 'KeyR' &&
+        phase === 'sailing' &&
+        !activeModalIsland &&
+        !mapOpen
+      ) {
+        playTone(sfxEnabled, 420, 0.08);
+        setSailsFurled((prev) => !prev);
       }
     };
 
@@ -151,16 +168,23 @@ export function App() {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [phase, nearbyIsland, activeModalIsland, mapOpen, sfxEnabled]);
 
+  const handleToggleSails = () => {
+    playTone(sfxEnabled, 420, 0.08);
+    setSailsFurled((prev) => !prev);
+  };
+
   return (
     <div className="relative h-screen w-screen overflow-hidden bg-[#F1C2B2]">
       <WorldScene
         phase={phase}
         isFirstPerson={isFirstPerson}
+        sailsFurled={sailsFurled}
         cameraModeRequest={cameraModeRequest}
         onZoomModeChange={setIsFirstPerson}
         onBoarded={handleBoarded}
         shipTelemetryRef={shipTelemetryRef}
         oceanParamsRef={oceanParamsRef}
+        liveWindRef={liveWindRef}
         nearbyIsland={nearbyIsland}
         activeModalIsland={activeModalIsland}
         onNearbyIslandChange={setNearbyIsland}
@@ -184,9 +208,11 @@ export function App() {
       {phase === 'sailing' && (
         <CompassHud
           shipTelemetryRef={shipTelemetryRef}
-          oceanParamsRef={oceanParamsRef}
+          liveWindRef={liveWindRef}
           isFirstPerson={isFirstPerson}
           onToggleCamera={handleToggleCamera}
+          sailsFurled={sailsFurled}
+          onToggleSails={handleToggleSails}
           sfxEnabled={sfxEnabled}
           onToggleSfx={handleToggleSfx}
           onOpenMap={() => {

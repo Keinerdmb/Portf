@@ -1,12 +1,14 @@
 import { useEffect, useRef } from 'react';
 import { ISLANDS } from '../../data/islands';
-import type { IslandId, OceanParams, ShipTelemetry } from '../../types/portfolio';
+import type { DynamicWindState, IslandId, ShipTelemetry } from '../../types/portfolio';
 
 interface CompassHudProps {
   shipTelemetryRef: React.RefObject<ShipTelemetry>;
-  oceanParamsRef: React.RefObject<OceanParams>;
+  liveWindRef: React.RefObject<DynamicWindState>;
   isFirstPerson: boolean;
   onToggleCamera: () => void;
+  sailsFurled: boolean;
+  onToggleSails: () => void;
   sfxEnabled: boolean;
   onToggleSfx: () => void;
   onOpenMap: () => void;
@@ -23,9 +25,11 @@ interface CompassHudProps {
 
 export function CompassHud({
   shipTelemetryRef,
-  oceanParamsRef,
+  liveWindRef,
   isFirstPerson,
   onToggleCamera,
+  sailsFurled,
+  onToggleSails,
   sfxEnabled,
   onToggleSfx,
   onOpenMap,
@@ -40,17 +44,18 @@ export function CompassHud({
   mobileInputRef,
 }: CompassHudProps) {
   const headingTextRef = useRef<HTMLSpanElement>(null);
+  const windPillRef = useRef<HTMLDivElement>(null);
   const windArrowRef = useRef<HTMLSpanElement>(null);
   const windKnotsRef = useRef<HTMLSpanElement>(null);
   const markerRefs = useRef<(HTMLDivElement | null)[]>([]);
 
-  // Actualizamos brújula y viento directo en DOM vía rAF para cero re-renders
+  // Actualizamos brújula y viento dinámico directo en DOM vía rAF para cero re-renders
   useEffect(() => {
     let rafId = 0;
 
     const tick = () => {
       const ship = shipTelemetryRef.current;
-      const params = oceanParamsRef.current;
+      const wind = liveWindRef.current;
 
       const deg = ((-ship.heading * 180) / Math.PI) % 360;
       const normalizedDeg = (deg + 360) % 360;
@@ -76,13 +81,28 @@ export function CompassHud({
       }
 
       if (windArrowRef.current) {
-        const relWindDeg = ((ship.heading + params.currentAngle) * 180) / Math.PI;
+        const relWindDeg = ((ship.heading + wind.direction) * 180) / Math.PI;
         windArrowRef.current.style.transform = `rotate(${relWindDeg}deg)`;
       }
 
       if (windKnotsRef.current) {
-        const boost = ship.windAlignment > 0.35 ? ' · VIENTO A FAVOR' : '';
-        windKnotsRef.current.textContent = `${Math.round(params.windSpeed)} KT${boost}`;
+        const isGust = wind.gustIntensity > 0.35;
+        const alignTag =
+          ship.gustBoost > 0.32
+            ? ' · RÁFAGA'
+            : ship.windAlignment > 0.35
+              ? ' · A FAVOR'
+              : ship.windAlignment < -0.45
+                ? ' · EN CONTRA'
+                : isGust
+                  ? ' · RÁFAGA'
+                  : '';
+        windKnotsRef.current.textContent = `${Math.round(wind.speed)} KT${alignTag}`;
+      }
+
+      if (windPillRef.current) {
+        windPillRef.current.style.borderColor =
+          wind.gustIntensity > 0.35 ? 'rgba(253, 132, 87, 0.85)' : 'rgba(255, 214, 153, 0.3)';
       }
 
       ISLANDS.forEach((island, idx) => {
@@ -108,7 +128,7 @@ export function CompassHud({
 
     rafId = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(rafId);
-  }, [shipTelemetryRef, oceanParamsRef]);
+  }, [shipTelemetryRef, liveWindRef]);
 
   const activeNearby = ISLANDS.find((i) => i.id === nearbyIsland);
 
@@ -116,8 +136,11 @@ export function CompassHud({
     <div className="pointer-events-none absolute inset-0 z-20 flex flex-col justify-between p-4 sm:p-6">
       {/* Barra superior: Viento + Brújula estilo cinta náutica + Acciones */}
       <div className="flex flex-wrap items-start justify-between gap-3">
-        {/* Indicador de Viento */}
-        <div className="hidden items-center gap-2 rounded-full border border-[#FFD699]/30 bg-[#211926]/65 px-3 py-1.5 backdrop-blur-[2px] sm:flex">
+        {/* Indicador de Viento Dinámico */}
+        <div
+          ref={windPillRef}
+          className="hidden items-center gap-2 rounded-full border border-[#FFD699]/30 bg-[#211926]/65 px-3 py-1.5 backdrop-blur-[2px] transition-colors sm:flex"
+        >
           <span
             ref={windArrowRef}
             className="inline-block font-mono text-sm leading-none text-[#FFD699]"
@@ -212,6 +235,17 @@ export function CompassHud({
           </button>
           <button
             type="button"
+            onClick={onToggleSails}
+            className={`cursor-pointer rounded border px-3 py-1.5 font-mono text-xs transition ${
+              sailsFurled
+                ? 'border-[#FFD699] bg-[#FFD699]/20 text-[#FFD699]'
+                : 'border-[#F1C2B2]/35 bg-[#211926]/70 text-[#FFF2C6] hover:border-[#FFD699] hover:text-[#FFD699]'
+            }`}
+          >
+            {sailsFurled ? '[R] VELAS: RECOGIDAS' : '[R] VELAS: IZADAS'}
+          </button>
+          <button
+            type="button"
             onClick={onToggleCamera}
             className="cursor-pointer rounded border border-[#F1C2B2]/35 bg-[#211926]/70 px-3 py-1.5 font-mono text-xs text-[#FFF2C6] transition hover:border-[#FFD699] hover:text-[#FFD699]"
           >
@@ -257,7 +291,7 @@ export function CompassHud({
         {/* Pie: controles discretos */}
         <div className="flex w-full items-end justify-between gap-4">
           <div className="hidden font-mono text-[11px] text-[#FFF2C6]/90 drop-shadow sm:block">
-            [WASD / FLECHAS] TIMÓN · [ARRASTRAR] CÁMARA · [C] CENTRAR · [E] ENTRAR
+            [WASD / FLECHAS] TIMÓN · [R] VELAS · [ARRASTRAR] CÁMARA · [C] CENTRAR · [E] ENTRAR
           </div>
 
           <div className="hidden font-display text-xs tracking-wider text-[#FFF2C6]/90 drop-shadow sm:block">

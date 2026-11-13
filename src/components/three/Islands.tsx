@@ -3,7 +3,7 @@ import { useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { ISLANDS } from '../../data/islands';
 import { ATARDECER_PALETTE } from '../../data/palette';
-import type { IslandData, IslandId, OceanParams } from '../../types/portfolio';
+import type { DynamicWindState, IslandData, IslandId } from '../../types/portfolio';
 import { sampleGerstnerSurface, stepBuoyantBody } from '../../utils/oceanMath';
 import {
   buildSculptedBeachGeometry,
@@ -16,7 +16,7 @@ import {
 
 interface IslandsProps {
   nearbyIsland: IslandId | null;
-  oceanParamsRef: React.RefObject<OceanParams>;
+  liveWindRef: React.RefObject<DynamicWindState>;
   sandStateRef: React.RefObject<SandSharedState>;
   stampQueueRef: React.RefObject<SandStampItem[]>;
   minigameActive: boolean;
@@ -147,7 +147,7 @@ function IslandMesh({
   tileIndex,
   isNearby,
   geometries,
-  oceanParamsRef,
+  liveWindRef,
   sandStateRef,
   stampQueueRef,
 }: {
@@ -155,7 +155,7 @@ function IslandMesh({
   tileIndex: number;
   isNearby: boolean;
   geometries: ReturnType<typeof buildPalmGeometries>;
-  oceanParamsRef: React.RefObject<OceanParams>;
+  liveWindRef: React.RefObject<DynamicWindState>;
   sandStateRef: React.RefObject<SandSharedState>;
   stampQueueRef: React.RefObject<SandStampItem[]>;
 }) {
@@ -182,7 +182,7 @@ function IslandMesh({
     if (lighthouseLightRef.current) {
       lighthouseLightRef.current.rotation.y = t * 1.6;
     }
-    syncBeachSandMaterial(sandMatRef.current, sandStateRef.current, oceanParamsRef.current);
+    syncBeachSandMaterial(sandMatRef.current, sandStateRef.current, liveWindRef.current.liveOcean);
   });
 
   const stampPointerFootprint = (e: ThreeEvent<MouseEvent>) => {
@@ -405,25 +405,25 @@ const TARGET_OFFSETS: [number, number][] = [
 function FloatingBarrel({
   baseX,
   baseZ,
-  oceanParamsRef,
+  liveWindRef,
   minigameActive,
   onHit,
 }: {
   baseX: number;
   baseZ: number;
-  oceanParamsRef: React.RefObject<OceanParams>;
+  liveWindRef: React.RefObject<DynamicWindState>;
   minigameActive: boolean;
   onHit: () => void;
 }) {
   const barrelRef = useRef<THREE.Group>(null);
   const bodyRef = useRef({ y: 0.2, velY: 0 });
 
-  useFrame(({ clock }, rawDelta) => {
+  useFrame((_, rawDelta) => {
     const grp = barrelRef.current;
     if (!grp) return;
     const dt = Math.min(rawDelta, 0.05);
-    const t = clock.getElapsedTime();
-    const surface = sampleGerstnerSurface(baseX, baseZ, t, oceanParamsRef.current);
+    const wind = liveWindRef.current;
+    const surface = sampleGerstnerSurface(baseX, baseZ, wind.waveTime, wind.liveOcean);
 
     const next = stepBuoyantBody(bodyRef.current.y, bodyRef.current.velY, surface.height, dt, 30, 5.4, -0.2);
     bodyRef.current.y = next.y;
@@ -471,21 +471,21 @@ const HARBOR_BUOYS: [number, number][] = [
 function BuoyantCrate({
   baseX,
   baseZ,
-  oceanParamsRef,
+  liveWindRef,
 }: {
   baseX: number;
   baseZ: number;
-  oceanParamsRef: React.RefObject<OceanParams>;
+  liveWindRef: React.RefObject<DynamicWindState>;
 }) {
   const crateRef = useRef<THREE.Group>(null);
   const bodyRef = useRef({ y: 0.1, velY: 0 });
 
-  useFrame(({ clock }, rawDelta) => {
+  useFrame((_, rawDelta) => {
     const grp = crateRef.current;
     if (!grp) return;
     const dt = Math.min(rawDelta, 0.05);
-    const t = clock.getElapsedTime();
-    const surface = sampleGerstnerSurface(baseX, baseZ, t, oceanParamsRef.current);
+    const wind = liveWindRef.current;
+    const surface = sampleGerstnerSurface(baseX, baseZ, wind.waveTime, wind.liveOcean);
 
     const next = stepBuoyantBody(bodyRef.current.y, bodyRef.current.velY, surface.height, dt, 34, 5.6, -0.05);
     bodyRef.current.y = next.y;
@@ -513,7 +513,7 @@ function BuoyantCrate({
 
 export function Islands({
   nearbyIsland,
-  oceanParamsRef,
+  liveWindRef,
   sandStateRef,
   stampQueueRef,
   minigameActive,
@@ -532,7 +532,7 @@ export function Islands({
           tileIndex={idx + 1}
           isNearby={nearbyIsland === island.id}
           geometries={geometries}
-          oceanParamsRef={oceanParamsRef}
+          liveWindRef={liveWindRef}
           sandStateRef={sandStateRef}
           stampQueueRef={stampQueueRef}
         />
@@ -544,7 +544,7 @@ export function Islands({
           key={`crate-${idx}`}
           baseX={bx}
           baseZ={bz}
-          oceanParamsRef={oceanParamsRef}
+          liveWindRef={liveWindRef}
         />
       ))}
 
@@ -556,7 +556,7 @@ export function Islands({
               key={idx}
               baseX={skullIsland.position[0] + ox}
               baseZ={skullIsland.position[1] + oz}
-              oceanParamsRef={oceanParamsRef}
+              liveWindRef={liveWindRef}
               minigameActive={minigameActive}
               onHit={() => onHitTarget(idx)}
             />

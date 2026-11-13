@@ -3,12 +3,12 @@ import { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { ISLANDS } from '../../data/islands';
 import { ATARDECER_PALETTE } from '../../data/palette';
-import type { OceanParams } from '../../types/portfolio';
+import type { DynamicWindState } from '../../types/portfolio';
 import { DEFAULT_OCEAN_PARAMS } from '../../utils/oceanMath';
 
 interface OceanProps {
   shipPosRef: React.RefObject<{ x: number; z: number }>;
-  oceanParamsRef: React.RefObject<OceanParams>;
+  liveWindRef: React.RefObject<DynamicWindState>;
 }
 
 const INNER_SIZE = 200;
@@ -27,7 +27,7 @@ const SHORE_ZONES: THREE.Vector3[] = [
 ];
 
 const GERSTNER_VERTEX_SHADER = `
-  uniform float uTime;
+  uniform float uWaveTime;
   uniform float uWindSpeed;
   uniform float uCurrentAngle;
   uniform float uMinHeight;
@@ -48,7 +48,6 @@ const GERSTNER_VERTEX_SHADER = `
     float weight,
     float totalHeight,
     float freq,
-    float windFactor,
     inout vec3 offset,
     inout vec3 normal
   ) {
@@ -57,11 +56,11 @@ const GERSTNER_VERTEX_SHADER = `
 
     float wavelength = baseWavelength / freq;
     float k = 6.2831853 / wavelength;
-    float omega = sqrt(9.81 * k) * windFactor;
+    float omega = sqrt(9.81 * k);
     float amp = totalHeight * 0.5 * weight;
     float q = min(steepness, 0.72 / (k * max(amp, 0.01) * 4.0));
 
-    float phase = k * dot(dir, xz) - omega * uTime;
+    float phase = k * dot(dir, xz) - omega * uWaveTime;
     float c = cos(phase);
     float s = sin(phase);
 
@@ -89,19 +88,18 @@ const GERSTNER_VERTEX_SHADER = `
     }
 
     float freq = max(0.35, uFrequency);
-    float windFactor = 0.65 + (uWindSpeed / 14.0) * 0.5;
     float minH = min(uMinHeight, uMaxHeight);
     float maxH = max(uMinHeight, uMaxHeight);
-    float spatialMod = 0.5 + 0.5 * sin(worldBase.x * 0.028 + worldBase.z * 0.022 + uTime * 0.22);
+    float spatialMod = 0.5 + 0.5 * sin(worldBase.x * 0.028 + worldBase.z * 0.022 + uWaveTime * 0.22);
     float totalHeight = mix(minH, maxH, spatialMod);
 
     vec3 disp = vec3(0.0);
     vec3 norm = vec3(0.0, 1.0, 0.0);
 
-    addGerstnerWave(worldBase.xz,  0.0,  34.0, 0.28, 0.50, totalHeight, freq, windFactor, disp, norm);
-    addGerstnerWave(worldBase.xz,  0.58, 21.5, 0.22, 0.26, totalHeight, freq, windFactor, disp, norm);
-    addGerstnerWave(worldBase.xz, -0.72, 12.8, 0.18, 0.15, totalHeight, freq, windFactor, disp, norm);
-    addGerstnerWave(worldBase.xz,  1.32,  7.4, 0.14, 0.09, totalHeight, freq, windFactor, disp, norm);
+    addGerstnerWave(worldBase.xz,  0.0,  34.0, 0.28, 0.50, totalHeight, freq, disp, norm);
+    addGerstnerWave(worldBase.xz,  0.58, 21.5, 0.22, 0.26, totalHeight, freq, disp, norm);
+    addGerstnerWave(worldBase.xz, -0.72, 12.8, 0.18, 0.15, totalHeight, freq, disp, norm);
+    addGerstnerWave(worldBase.xz,  1.32,  7.4, 0.14, 0.09, totalHeight, freq, disp, norm);
 
     if (uIsOuter > 0.5) {
       disp.y -= 0.06;
@@ -271,7 +269,7 @@ function applyTriangularJitter(mesh: THREE.Mesh, size: number, jitterAmount: num
   posAttr.needsUpdate = true;
 }
 
-export function Ocean({ shipPosRef, oceanParamsRef }: OceanProps) {
+export function Ocean({ shipPosRef, liveWindRef }: OceanProps) {
   const innerRef = useRef<THREE.Mesh>(null);
   const outerRef = useRef<THREE.Mesh>(null);
   const innerMatRef = useRef<THREE.ShaderMaterial>(null);
@@ -279,6 +277,7 @@ export function Ocean({ shipPosRef, oceanParamsRef }: OceanProps) {
 
   const createUniforms = (isOuter: number) => ({
     uTime: { value: 0 },
+    uWaveTime: { value: 0 },
     uWindSpeed: { value: DEFAULT_OCEAN_PARAMS.windSpeed },
     uCurrentAngle: { value: DEFAULT_OCEAN_PARAMS.currentAngle },
     uMinHeight: { value: DEFAULT_OCEAN_PARAMS.minWaveHeight },
@@ -308,7 +307,8 @@ export function Ocean({ shipPosRef, oceanParamsRef }: OceanProps) {
     const t = clock.getElapsedTime();
     const sx = shipPosRef.current.x;
     const sz = shipPosRef.current.z;
-    const params = oceanParamsRef.current;
+    const wind = liveWindRef.current;
+    const params = wind.liveOcean;
 
     if (innerRef.current) {
       const snap = INNER_SIZE / INNER_SEGMENTS;
@@ -325,6 +325,7 @@ export function Ocean({ shipPosRef, oceanParamsRef }: OceanProps) {
     const syncUniforms = (mat: THREE.ShaderMaterial | null) => {
       if (!mat) return;
       mat.uniforms.uTime.value = t;
+      mat.uniforms.uWaveTime.value = wind.waveTime;
       mat.uniforms.uWindSpeed.value = params.windSpeed;
       mat.uniforms.uCurrentAngle.value = params.currentAngle;
       mat.uniforms.uMinHeight.value = params.minWaveHeight;

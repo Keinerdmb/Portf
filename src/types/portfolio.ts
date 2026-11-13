@@ -42,6 +42,10 @@ export interface ShipTelemetry {
   steerAngle: number;
   /** Factor de impulso de viento actual (-1 contra viento, +1 a favor) */
   windAlignment: number;
+  /** Impulso activo por ráfaga atrapada en las velas (0 .. 1) */
+  gustBoost: number;
+  /** Si las velas principales están izadas o recogidas */
+  sailDeployed: boolean;
 }
 
 export interface OceanParams {
@@ -55,4 +59,22 @@ export interface OceanParams {
   maxWaveHeight: number;
   /** Multiplicador de frecuencia de oleaje (0.5 = muy suave, 1.5 = picado) */
   waveFrequency: number;
+}
+
+export interface DynamicWindState {
+  /** Velocidad instantánea del viento en nudos (base + variabilidad + ráfaga) */
+  speed: number;
+  /** Dirección dinámica actual del viento en radianes (convención de oleaje) */
+  direction: number;
+  /** Vector unitario XZ del viento global */
+  dirX: number;
+  dirZ: number;
+  /** Intensidad normalizada de la ráfaga periódica (0 .. 1) */
+  gustIntensity: number;
+  /** Tiempo de fase oceánica integrado continuamente (evita retrocesos en ráfagas) */
+  waveTime: number;
+  /** Estado objetivo/actual de despliegue de velas (0.28 = recogidas, 1 = izadas) */
+  sailDeploy: number;
+  /** Parámetros oceánicos efectivos sincronizados con viento y ráfagas */
+  liveOcean: OceanParams;
 }

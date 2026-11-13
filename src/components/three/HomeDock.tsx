@@ -2,7 +2,7 @@ import { useFrame, type ThreeEvent } from '@react-three/fiber';
 import { useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { ATARDECER_PALETTE } from '../../data/palette';
-import type { OceanParams } from '../../types/portfolio';
+import type { DynamicWindState } from '../../types/portfolio';
 import {
   buildSculptedBeachGeometry,
   queueSandStamp,
@@ -13,7 +13,7 @@ import {
 } from '../../utils/sandDeformation';
 
 interface HomeDockProps {
-  oceanParamsRef: React.RefObject<OceanParams>;
+  liveWindRef: React.RefObject<DynamicWindState>;
   sandStateRef: React.RefObject<SandSharedState>;
   stampQueueRef: React.RefObject<SandStampItem[]>;
 }
@@ -54,7 +54,7 @@ function buildDockPalm() {
 }
 
 export function HomeDock({
-  oceanParamsRef,
+  liveWindRef,
   sandStateRef,
   stampQueueRef,
 }: HomeDockProps) {
@@ -68,7 +68,7 @@ export function HomeDock({
     if (palmRef.current) {
       palmRef.current.rotation.z = Math.sin(clock.getElapsedTime() * 1.4) * 0.06;
     }
-    syncBeachSandMaterial(sandMatRef.current, sandStateRef.current, oceanParamsRef.current);
+    syncBeachSandMaterial(sandMatRef.current, sandStateRef.current, liveWindRef.current.liveOcean);
   });
 
   const handleBeachClick = (e: ThreeEvent<MouseEvent>) => {

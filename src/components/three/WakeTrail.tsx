@@ -1,12 +1,12 @@
 import { useFrame } from '@react-three/fiber';
 import { useRef } from 'react';
 import * as THREE from 'three';
-import type { OceanParams, ShipTelemetry } from '../../types/portfolio';
+import type { DynamicWindState, ShipTelemetry } from '../../types/portfolio';
 import { sampleGerstnerSurface } from '../../utils/oceanMath';
 
 interface WakeTrailProps {
   shipTelemetryRef: React.RefObject<ShipTelemetry>;
-  oceanParamsRef: React.RefObject<OceanParams>;
+  liveWindRef: React.RefObject<DynamicWindState>;
 }
 
 const FOAM_COUNT = 34;
@@ -34,7 +34,7 @@ interface SprayNode {
   size: number;
 }
 
-export function WakeTrail({ shipTelemetryRef, oceanParamsRef }: WakeTrailProps) {
+export function WakeTrail({ shipTelemetryRef, liveWindRef }: WakeTrailProps) {
   const foamMeshRefs = useRef<(THREE.Mesh | null)[]>([]);
   const sprayMeshRefs = useRef<(THREE.Mesh | null)[]>([]);
 
@@ -68,11 +68,12 @@ export function WakeTrail({ shipTelemetryRef, oceanParamsRef }: WakeTrailProps) 
   const sprayAccumRef = useRef(0);
   const sprayCursorRef = useRef(0);
 
-  useFrame(({ clock }, rawDelta) => {
+  useFrame((_, rawDelta) => {
     const dt = Math.min(rawDelta, 0.05);
-    const t = clock.getElapsedTime();
     const ship = shipTelemetryRef.current;
-    const params = oceanParamsRef.current;
+    const wind = liveWindRef.current;
+    const waveT = wind.waveTime;
+    const params = wind.liveOcean;
     const speedAbs = Math.abs(ship.speed);
     const sinH = Math.sin(ship.heading);
     const cosH = Math.cos(ship.heading);
@@ -109,10 +110,11 @@ export function WakeTrail({ shipTelemetryRef, oceanParamsRef }: WakeTrailProps) 
     if (ship.speed > 2.8) {
       const bowX = ship.x - sinH * 3.9;
       const bowZ = ship.z - cosH * 3.9;
-      const bowWave = sampleGerstnerSurface(bowX, bowZ, t, params);
+      const bowWave = sampleGerstnerSurface(bowX, bowZ, waveT, params);
       const plungeFactor = Math.max(0, -ship.velY * 0.9) + Math.max(0, -ship.pitch * 4.5);
       const turnSplash = Math.abs(ship.steerAngle) * (ship.speed / 18) * 1.4;
-      const waveCutIntensity = 1 + plungeFactor + turnSplash + bowWave.slope * 2.2;
+      const waveCutIntensity =
+        (1 + plungeFactor + turnSplash + bowWave.slope * 2.2) * (1 + wind.gustIntensity * 0.38);
 
       sprayAccumRef.current += dt * (4.0 + ship.speed * 0.85) * waveCutIntensity;
       while (sprayAccumRef.current >= 1) {
@@ -158,7 +160,7 @@ export function WakeTrail({ shipTelemetryRef, oceanParamsRef }: WakeTrailProps) 
       node.vz *= 1 - dt * 1.8;
 
       const progress = node.age / node.life;
-      const sample = sampleGerstnerSurface(node.x, node.z, t, params);
+      const sample = sampleGerstnerSurface(node.x, node.z, waveT, params);
       const scale = node.baseScale + progress * 1.85;
 
       mesh.visible = true;
@@ -184,7 +186,7 @@ export function WakeTrail({ shipTelemetryRef, oceanParamsRef }: WakeTrailProps) 
       node.y += node.vy * dt;
       node.z += node.vz * dt;
 
-      const waterSample = sampleGerstnerSurface(node.x, node.z, t, params);
+      const waterSample = sampleGerstnerSurface(node.x, node.z, waveT, params);
       if (node.y < waterSample.height - 0.05 && node.vy < 0) {
         mesh.visible = false;
         node.age = node.life;

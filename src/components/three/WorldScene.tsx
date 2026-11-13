@@ -3,11 +3,13 @@ import { useRef } from 'react';
 import * as THREE from 'three';
 import { ATARDECER_PALETTE } from '../../data/palette';
 import type {
+  DynamicWindState,
   GamePhase,
   IslandId,
   OceanParams,
   ShipTelemetry,
 } from '../../types/portfolio';
+import { stepDynamicWind } from '../../utils/windMath';
 import { CameraRig } from './CameraRig';
 import { FishSchools } from './FishSchools';
 import { HomeDock } from './HomeDock';
@@ -24,11 +26,13 @@ import type { SandSharedState, SandStampItem } from '../../utils/sandDeformation
 interface WorldSceneProps {
   phase: GamePhase;
   isFirstPerson: boolean;
+  sailsFurled: boolean;
   cameraModeRequest: { zoom: number; nonce: number } | null;
   onZoomModeChange: (isFirstPerson: boolean) => void;
   onBoarded: () => void;
   shipTelemetryRef: React.RefObject<ShipTelemetry>;
   oceanParamsRef: React.RefObject<OceanParams>;
+  liveWindRef: React.RefObject<DynamicWindState>;
   nearbyIsland: IslandId | null;
   activeModalIsland: IslandId | null;
   onNearbyIslandChange: (islandId: IslandId | null) => void;
@@ -37,6 +41,24 @@ interface WorldSceneProps {
   minigameActive: boolean;
   hitTargets: number[];
   onHitTarget: (idx: number) => void;
+}
+
+function GlobalWindController({
+  oceanParamsRef,
+  liveWindRef,
+}: {
+  oceanParamsRef: React.RefObject<OceanParams>;
+  liveWindRef: React.RefObject<DynamicWindState>;
+}) {
+  useFrame(({ clock }, rawDelta) => {
+    stepDynamicWind(
+      liveWindRef.current,
+      oceanParamsRef.current,
+      clock.getElapsedTime(),
+      Math.min(rawDelta, 0.05)
+    );
+  });
+  return null;
 }
 
 function BoardingActor({
@@ -124,11 +146,13 @@ function BoardingActor({
 export function WorldScene({
   phase,
   isFirstPerson,
+  sailsFurled,
   cameraModeRequest,
   onZoomModeChange,
   onBoarded,
   shipTelemetryRef,
   oceanParamsRef,
+  liveWindRef,
   nearbyIsland,
   activeModalIsland,
   onNearbyIslandChange,
@@ -165,27 +189,28 @@ export function WorldScene({
       <directionalLight position={[-36, 28, -200]} intensity={2.25} color={ATARDECER_PALETTE.sunLight} />
       <directionalLight position={[50, 24, 60]} intensity={0.65} color={ATARDECER_PALETTE.fillLight} />
 
+      <GlobalWindController oceanParamsRef={oceanParamsRef} liveWindRef={liveWindRef} />
       <SkyDome />
       <SandSimulation
         phase={phase}
-        oceanParamsRef={oceanParamsRef}
+        liveWindRef={liveWindRef}
         shipTelemetryRef={shipTelemetryRef}
         playerPosRef={boardingCharPosRef}
         stampQueueRef={stampQueueRef}
         sandStateRef={sandStateRef}
       />
-      <Ocean shipPosRef={shipPosRef} oceanParamsRef={oceanParamsRef} />
+      <Ocean shipPosRef={shipPosRef} liveWindRef={liveWindRef} />
       <FishSchools
         shipTelemetryRef={shipTelemetryRef}
         playerPosRef={boardingCharPosRef}
       />
       <HomeDock
-        oceanParamsRef={oceanParamsRef}
+        liveWindRef={liveWindRef}
         sandStateRef={sandStateRef}
         stampQueueRef={stampQueueRef}
       />
-      <WindAndSkyLife shipPosRef={shipPosRef} oceanParamsRef={oceanParamsRef} />
-      <WakeTrail shipTelemetryRef={shipTelemetryRef} oceanParamsRef={oceanParamsRef} />
+      <WindAndSkyLife shipPosRef={shipPosRef} liveWindRef={liveWindRef} />
+      <WakeTrail shipTelemetryRef={shipTelemetryRef} liveWindRef={liveWindRef} />
 
       <BoardingActor
         phase={phase}
@@ -198,9 +223,10 @@ export function WorldScene({
       <PirateShip
         phase={phase}
         isFirstPerson={isFirstPerson}
+        sailsFurled={sailsFurled}
         shipTelemetryRef={shipTelemetryRef}
         shipPosRef={shipPosRef}
-        oceanParamsRef={oceanParamsRef}
+        liveWindRef={liveWindRef}
         activeModalIsland={activeModalIsland}
         onNearbyIslandChange={onNearbyIslandChange}
         onHullCollision={onHullCollision}
@@ -209,7 +235,7 @@ export function WorldScene({
 
       <Islands
         nearbyIsland={nearbyIsland}
-        oceanParamsRef={oceanParamsRef}
+        liveWindRef={liveWindRef}
         sandStateRef={sandStateRef}
         stampQueueRef={stampQueueRef}
         minigameActive={minigameActive}
