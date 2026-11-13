@@ -1,0 +1,49 @@
+@import "tailwindcss";
+
+@theme {
+  --font-pixel: "Press Start 2P", monospace;
+  --font-terminal: "VT323", monospace;
+}
+
+/* Fondo base oscuro */
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  background-color: #07070e;
+}
+
+/* Efecto CRT ligero: scanlines estáticas (la GPU las cachea, 0 lag) */
+.crt-scanlines {
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0) 0px,
+    rgba(255, 255, 255, 0) 2px,
+    rgba(0, 0, 0, 0.28) 3px,
+    rgba(0, 0, 0, 0.28) 4px
+  );
+}
+
+/* Viñeta sutil para simular la curvatura del tubo CRT */
+.crt-vignette {
+  background: radial-gradient(
+    circle at center,
+    transparent 62%,
+    rgba(0, 0, 0, 0.55) 100%
+  );
+}
+
+/* Parpadeo clásico arcade usando solo opacity (100% GPU) */
+@keyframes arcade-blink {
+  0%, 49% {
+    opacity: 1;
+  }
+  50%, 100% {
+    opacity: 0.2;
+  }
+}
+
+.animate-arcade-blink {
+  animation: arcade-blink 1.1s steps(2, start) infinite;
+}
