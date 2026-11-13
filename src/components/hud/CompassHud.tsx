@@ -131,25 +131,55 @@ export function CompassHud({
           </span>
         </div>
 
-        {/* Brújula central limpia estilo cinta de la referencia */}
+        {/* Brújula central estilo cinta náutica de la referencia */}
         <div className="mx-auto flex w-full max-w-md flex-col items-center gap-1">
-          <div className="relative h-7 w-full overflow-hidden rounded-full border border-amber-100/35 bg-slate-950/55 px-3">
-            <div className="absolute top-0 bottom-0 left-1/2 w-0.5 -translate-x-1/2 bg-amber-300/90" />
+          <div className="relative flex w-full items-center justify-center">
+            {/* Extremo izquierdo de cinta */}
+            <svg
+              viewBox="0 0 24 28"
+              className="h-7 w-5 shrink-0 text-amber-100/40"
+              fill="none"
+            >
+              <path
+                d="M24 2H4L11 14L4 26H24"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                fill="rgba(15, 23, 42, 0.45)"
+              />
+            </svg>
 
-            {ISLANDS.map((island, idx) => (
-              <div
-                key={island.id}
-                ref={(el) => {
-                  markerRefs.current[idx] = el;
-                }}
-                className="absolute top-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center"
-              >
-                <span
-                  className="h-2.5 w-2.5 rotate-45 border border-white/80"
-                  style={{ backgroundColor: island.accentColor }}
-                />
-              </div>
-            ))}
+            <div className="relative h-7 flex-1 overflow-hidden border-y border-amber-100/45 bg-slate-950/45 px-3 backdrop-blur-[1px]">
+              <div className="absolute top-0 bottom-0 left-1/2 w-0.5 -translate-x-1/2 bg-amber-300/90" />
+
+              {ISLANDS.map((island, idx) => (
+                <div
+                  key={island.id}
+                  ref={(el) => {
+                    markerRefs.current[idx] = el;
+                  }}
+                  className="absolute top-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center"
+                >
+                  <span
+                    className="h-2.5 w-2.5 rotate-45 border border-white/85"
+                    style={{ backgroundColor: island.accentColor }}
+                  />
+                </div>
+              ))}
+            </div>
+
+            {/* Extremo derecho de cinta */}
+            <svg
+              viewBox="0 0 24 28"
+              className="h-7 w-5 shrink-0 text-amber-100/40"
+              fill="none"
+            >
+              <path
+                d="M0 2H20L13 14L20 26H0"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                fill="rgba(15, 23, 42, 0.45)"
+              />
+            </svg>
           </div>
           <span
             ref={headingTextRef}

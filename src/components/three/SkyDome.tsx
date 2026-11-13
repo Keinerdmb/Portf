@@ -14,60 +14,63 @@ const SKY_VERTEX_SHADER = `
 const SKY_FRAGMENT_SHADER = `
   varying vec3 vWorldPosition;
   uniform vec3 uSunDir;
+  uniform float uTime;
 
   void main() {
     vec3 dir = normalize(vWorldPosition);
     float h = clamp(dir.y, -0.1, 1.0);
 
-    // Degradado fiel al atardecer dorado -> durazno -> lavanda -> azul crepúsculo
-    vec3 horizonColor = vec3(0.96, 0.72, 0.45);
-    vec3 midColor     = vec3(0.76, 0.50, 0.49);
-    vec3 zenithColor  = vec3(0.24, 0.30, 0.46);
+    // Atardecer cálido durazno-dorado -> lavanda suave -> azul crepuscular
+    vec3 horizonColor = vec3(0.96, 0.77, 0.50);
+    vec3 midColor     = vec3(0.81, 0.56, 0.50);
+    vec3 zenithColor  = vec3(0.30, 0.35, 0.50);
 
-    vec3 col = mix(horizonColor, midColor, smoothstep(0.0, 0.24, h));
-    col = mix(col, zenithColor, smoothstep(0.20, 0.75, h));
+    vec3 col = mix(horizonColor, midColor, smoothstep(0.0, 0.22, h));
+    col = mix(col, zenithColor, smoothstep(0.18, 0.72, h));
 
-    // Halo cálido alrededor del sol en el horizonte
+    // Bandas suaves de nubes en el horizonte (sin geometría extra)
+    float az = atan(dir.x, -dir.z);
+    float cloudWave1 = sin(az * 4.0 + uTime * 0.02) * 0.5 + sin(az * 9.0 - uTime * 0.015) * 0.5;
+    float cloudBand1 = smoothstep(0.03, 0.14, h) * (1.0 - smoothstep(0.12, 0.28, h));
+    float cloudMask = smoothstep(-0.1, 0.65, cloudWave1) * cloudBand1;
+    col = mix(col, vec3(0.95, 0.72, 0.56), cloudMask * 0.42);
+
+    float cloudWave2 = cos(az * 6.0 - uTime * 0.018) * 0.5 + sin(az * 13.0) * 0.5;
+    float cloudBand2 = smoothstep(0.14, 0.26, h) * (1.0 - smoothstep(0.26, 0.44, h));
+    col = mix(col, vec3(0.70, 0.55, 0.62), smoothstep(0.0, 0.7, cloudWave2) * cloudBand2 * 0.35);
+
+    // Halo dorado alrededor del sol
     float sunGlow = max(dot(dir, normalize(uSunDir)), 0.0);
-    col += vec3(1.0, 0.76, 0.42) * pow(sunGlow, 10.0) * 0.45;
-    col += vec3(1.0, 0.92, 0.75) * pow(sunGlow, 64.0) * 0.5;
+    col += vec3(1.0, 0.80, 0.46) * pow(sunGlow, 8.0) * 0.48;
+    col += vec3(1.0, 0.95, 0.78) * pow(sunGlow, 48.0) * 0.55;
 
     gl_FragColor = vec4(col, 1.0);
   }
 `;
 
-const CLOUD_DATA = [
-  { pos: [-80, 38, -160] as [number, number, number], scale: [18, 3.2, 6] as [number, number, number], speed: 0.5 },
-  { pos: [25, 44, -185] as [number, number, number], scale: [24, 3.8, 7] as [number, number, number], speed: 0.35 },
-  { pos: [110, 34, -140] as [number, number, number], scale: [16, 2.8, 5] as [number, number, number], speed: 0.45 },
-  { pos: [-120, 42, -90] as [number, number, number], scale: [20, 3.2, 6] as [number, number, number], speed: 0.4 },
-];
-
 export function SkyDome() {
-  const cloudsRef = useRef<(THREE.Mesh | null)[]>([]);
+  const matRef = useRef<THREE.ShaderMaterial>(null);
 
   const uniforms = useMemo(
     () => ({
-      uSunDir: { value: new THREE.Vector3(-0.14, 0.08, -1).normalize() },
+      uSunDir: { value: new THREE.Vector3(-0.14, 0.07, -1).normalize() },
+      uTime: { value: 0 },
     }),
     []
   );
 
-  useFrame((_, rawDelta) => {
-    const dt = Math.min(rawDelta, 0.05);
-    cloudsRef.current.forEach((cloud, i) => {
-      if (!cloud) return;
-      cloud.position.x += CLOUD_DATA[i].speed * dt;
-      if (cloud.position.x > 160) cloud.position.x = -160;
-    });
+  useFrame(({ clock }) => {
+    if (matRef.current) {
+      matRef.current.uniforms.uTime.value = clock.getElapsedTime();
+    }
   });
 
   return (
     <group>
-      {/* Cúpula degradada de cielo */}
       <mesh>
-        <sphereGeometry args={[280, 20, 14]} />
+        <sphereGeometry args={[285, 24, 16]} />
         <shaderMaterial
+          ref={matRef}
           vertexShader={SKY_VERTEX_SHADER}
           fragmentShader={SKY_FRAGMENT_SHADER}
           uniforms={uniforms}
@@ -76,30 +79,15 @@ export function SkyDome() {
         />
       </mesh>
 
-      {/* Sol cálido en el horizonte */}
-      <mesh position={[-32, 16, -230]}>
-        <circleGeometry args={[18, 24]} />
-        <meshBasicMaterial color="#fff3c4" fog={false} />
+      {/* Sol dorado bajo en el horizonte */}
+      <mesh position={[-32, 15, -230]}>
+        <circleGeometry args={[17, 28]} />
+        <meshBasicMaterial color="#fff7d6" fog={false} />
       </mesh>
-      <mesh position={[-32, 16, -232]}>
-        <circleGeometry args={[27, 24]} />
-        <meshBasicMaterial color="#ffd180" transparent opacity={0.35} fog={false} />
+      <mesh position={[-32, 15, -232]}>
+        <circleGeometry args={[28, 28]} />
+        <meshBasicMaterial color="#ffd180" transparent opacity={0.32} fog={false} />
       </mesh>
-
-      {/* Nubes estilizadas low-poly desplazándose suave */}
-      {CLOUD_DATA.map((c, idx) => (
-        <mesh
-          key={idx}
-          ref={(el) => {
-            cloudsRef.current[idx] = el;
-          }}
-          position={c.pos}
-          scale={c.scale}
-        >
-          <dodecahedronGeometry args={[1, 0]} />
-          <meshBasicMaterial color="#f5cbb0" transparent opacity={0.5} fog={false} />
-        </mesh>
-      ))}
     </group>
   );
 }

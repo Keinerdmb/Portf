@@ -31,7 +31,7 @@ export function App() {
 
   const [nearbyIsland, setNearbyIsland] = useState<IslandId | null>(null);
   const [activeModalIsland, setActiveModalIsland] = useState<IslandId | null>(null);
-  const [mapShipPos, setMapShipPos] = useState<{ x: number; z: number } | null>(null);
+  const [mapOpen, setMapOpen] = useState(false);
 
   const [minigameActive, setMinigameActive] = useState(false);
   const [hitTargets, setHitTargets] = useState<number[]>([]);
@@ -83,7 +83,7 @@ export function App() {
     shipTelemetryRef.current.heading = 0;
     shipTelemetryRef.current.speed = 0;
     shipTelemetryRef.current.steerAngle = 0;
-    setMapShipPos(null);
+    setMapOpen(false);
     setNearbyIsland(island.id);
   };
 
@@ -114,7 +114,7 @@ export function App() {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.code === 'Escape') {
         setActiveModalIsland(null);
-        setMapShipPos(null);
+        setMapOpen(false);
         return;
       }
 
@@ -123,7 +123,7 @@ export function App() {
         phase === 'sailing' &&
         nearbyIsland &&
         !activeModalIsland &&
-        !mapShipPos
+        !mapOpen
       ) {
         playTone(sfxEnabled, 520, 0.08);
         setActiveModalIsland(nearbyIsland);
@@ -132,7 +132,7 @@ export function App() {
 
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [phase, nearbyIsland, activeModalIsland, mapShipPos, sfxEnabled]);
+  }, [phase, nearbyIsland, activeModalIsland, mapOpen, sfxEnabled]);
 
   return (
     <div className="relative h-screen w-screen overflow-hidden bg-[#2b1e3e]">
@@ -172,10 +172,7 @@ export function App() {
           onToggleSfx={handleToggleSfx}
           onOpenMap={() => {
             playTone(sfxEnabled, 400, 0.06);
-            setMapShipPos({
-              x: shipTelemetryRef.current.x,
-              z: shipTelemetryRef.current.z,
-            });
+            setMapOpen((prev) => !prev);
           }}
           nearbyIsland={nearbyIsland}
           onOpenIsland={(id) => {
@@ -200,10 +197,10 @@ export function App() {
         />
       )}
 
-      {mapShipPos && (
+      {mapOpen && (
         <WorldMapModal
-          shipPosition={mapShipPos}
-          onClose={() => setMapShipPos(null)}
+          shipTelemetryRef={shipTelemetryRef}
+          onClose={() => setMapOpen(false)}
           onFastTravel={handleFastTravel}
         />
       )}

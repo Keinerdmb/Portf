@@ -13,63 +13,125 @@ interface IslandsProps {
 }
 
 /**
- * Genera una textura de letrero de madera en memoria (0 archivos externos)
- * para mostrar el nombre de cada isla como en la referencia.
+ * Crea geometrías compartidas de palmera curva + hojas arqueadas (cero aspecto Lego).
  */
+function buildPalmGeometries() {
+  const curve = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(0, 0, 0),
+    new THREE.Vector3(0.32, 1.5, 0.1),
+    new THREE.Vector3(0.78, 3.0, 0.25),
+    new THREE.Vector3(1.1, 4.3, 0.35),
+  ]);
+  const trunkGeo = new THREE.TubeGeometry(curve, 7, 0.18, 6, false);
+
+  // Hoja arqueada puntiaguda
+  const frondGeo = new THREE.PlaneGeometry(0.65, 2.3, 2, 5);
+  const pos = frondGeo.attributes.position as THREE.BufferAttribute;
+  for (let i = 0; i < pos.count; i += 1) {
+    const x = pos.getX(i);
+    const y = pos.getY(i) + 1.15; // 0 en la base -> 2.3 en la punta
+    const t = y / 2.3;
+    const widthScale = Math.sin(t * Math.PI) * 1.15;
+    const droopZ = -(t * t) * 0.95; // Se curva hacia abajo suavemente
+    pos.setXYZ(i, x * widthScale, droopZ, y);
+  }
+  frondGeo.computeVertexNormals();
+
+  // Acantilado orgánico desplazado (silueta de peñasco natural)
+  const cliffGeo = new THREE.DodecahedronGeometry(5.5, 1);
+  const cPos = cliffGeo.attributes.position as THREE.BufferAttribute;
+  for (let i = 0; i < cPos.count; i += 1) {
+    const vx = cPos.getX(i);
+    const vy = cPos.getY(i);
+    const vz = cPos.getZ(i);
+    const noise = 0.82 + Math.sin(vx * 0.7 + vz * 0.9) * 0.22;
+    cPos.setXYZ(i, vx * noise, Math.max(-0.5, vy * 1.15), vz * noise);
+  }
+  cliffGeo.computeVertexNormals();
+
+  // Base de playa irregular
+  const beachGeo = new THREE.CylinderGeometry(9.8, 13.6, 2.2, 11);
+  const bPos = beachGeo.attributes.position as THREE.BufferAttribute;
+  for (let i = 0; i < bPos.count; i += 1) {
+    const vx = bPos.getX(i);
+    const vy = bPos.getY(i);
+    const vz = bPos.getZ(i);
+    const ang = Math.atan2(vz, vx);
+    const stretch = 1 + Math.sin(ang * 3) * 0.14 + Math.cos(ang * 2) * 0.08;
+    bPos.setXYZ(i, vx * stretch, vy, vz * stretch);
+  }
+  beachGeo.computeVertexNormals();
+
+  return { trunkGeo, frondGeo, cliffGeo, beachGeo };
+}
+
 function createWoodSignTexture(label: string, accentColor: string): THREE.CanvasTexture {
   const canvas = document.createElement('canvas');
   canvas.width = 512;
-  canvas.height = 160;
+  canvas.height = 144;
   const ctx = canvas.getContext('2d');
   if (ctx) {
-    ctx.fillStyle = '#3d2414';
-    ctx.fillRect(0, 0, 512, 160);
+    ctx.fillStyle = '#4a2c18';
+    ctx.fillRect(0, 0, 512, 144);
+
+    // Vetas sutiles de madera
+    ctx.fillStyle = 'rgba(0,0,0,0.16)';
+    ctx.fillRect(0, 34, 512, 6);
+    ctx.fillRect(0, 98, 512, 6);
 
     ctx.strokeStyle = accentColor;
-    ctx.lineWidth = 10;
-    ctx.strokeRect(10, 10, 492, 140);
+    ctx.lineWidth = 8;
+    ctx.strokeRect(8, 8, 496, 128);
 
     ctx.fillStyle = '#fef3c7';
-    ctx.font = 'bold 58px "Space Grotesk", sans-serif';
+    ctx.font = 'bold 54px "Space Grotesk", sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(label, 256, 84);
+    ctx.fillText(label, 256, 75);
   }
   const tex = new THREE.CanvasTexture(canvas);
   tex.needsUpdate = true;
   return tex;
 }
 
-function PalmTree({
+function CurvedPalm({
   position,
+  rotationY = 0,
   scale = 1,
   phaseOffset = 0,
+  trunkGeo,
+  frondGeo,
 }: {
   position: [number, number, number];
+  rotationY?: number;
   scale?: number;
   phaseOffset?: number;
+  trunkGeo: THREE.BufferGeometry;
+  frondGeo: THREE.BufferGeometry;
 }) {
   const crownRef = useRef<THREE.Group>(null);
 
   useFrame(({ clock }) => {
     if (crownRef.current) {
       const t = clock.getElapsedTime();
-      crownRef.current.rotation.z = Math.sin(t * 1.5 + phaseOffset) * 0.06;
-      crownRef.current.rotation.x = Math.cos(t * 1.2 + phaseOffset) * 0.04;
+      crownRef.current.rotation.z = Math.sin(t * 1.5 + phaseOffset) * 0.07;
+      crownRef.current.rotation.x = Math.cos(t * 1.2 + phaseOffset) * 0.05;
     }
   });
 
   return (
-    <group position={position} scale={scale}>
-      <mesh position={[0, 2.0, 0]} rotation={[0.08, 0, -0.14]}>
-        <cylinderGeometry args={[0.16, 0.3, 4.2, 5]} />
+    <group position={position} rotation={[0, rotationY, 0]} scale={scale}>
+      <mesh geometry={trunkGeo}>
         <meshStandardMaterial color="#6b442a" flatShading />
       </mesh>
-      <group ref={crownRef} position={[0.3, 3.9, -0.15]}>
-        {[0, 1.25, 2.5, 3.75, 5.0].map((angle) => (
-          <mesh key={angle} rotation={[0.45, angle, 0.85]} position={[0, 0, 0]}>
-            <coneGeometry args={[0.55, 2.3, 4]} />
-            <meshStandardMaterial color="#2f6f4e" flatShading />
+      <group ref={crownRef} position={[1.1, 4.3, 0.35]}>
+        {[0, 1.05, 2.1, 3.15, 4.2, 5.25].map((angle) => (
+          <mesh
+            key={angle}
+            geometry={frondGeo}
+            rotation={[-0.18, angle, 0]}
+          >
+            <meshStandardMaterial color="#2f6f4e" flatShading side={THREE.DoubleSide} />
           </mesh>
         ))}
       </group>
@@ -80,9 +142,11 @@ function PalmTree({
 function IslandMesh({
   island,
   isNearby,
+  geometries,
 }: {
   island: IslandData;
   isNearby: boolean;
+  geometries: ReturnType<typeof buildPalmGeometries>;
 }) {
   const beaconRef = useRef<THREE.Mesh>(null);
   const lighthouseLightRef = useRef<THREE.Group>(null);
@@ -95,7 +159,7 @@ function IslandMesh({
   useFrame(({ clock }) => {
     const t = clock.getElapsedTime();
     if (beaconRef.current) {
-      beaconRef.current.position.y = 13.5 + Math.sin(t * 2.2) * 0.6;
+      beaconRef.current.position.y = 14.5 + Math.sin(t * 2.2) * 0.6;
       beaconRef.current.rotation.y = t * 1.4;
     }
     if (lighthouseLightRef.current) {
@@ -105,23 +169,25 @@ function IslandMesh({
 
   return (
     <group position={[island.position[0], 0, island.position[1]]}>
-      {/* Playa de arena */}
-      <mesh position={[0, 0.4, 0]}>
-        <cylinderGeometry args={[10.5, 13.8, 2.2, 9]} />
+      {/* Playa irregular */}
+      <mesh geometry={geometries.beachGeo} position={[0, 0.35, 0]}>
         <meshStandardMaterial color="#dfb07c" flatShading roughness={0.9} />
       </mesh>
 
-      {/* Acantilados y roca facetada (fiel al estilo de la referencia) */}
-      <mesh position={[-1.4, 2.8, 0.4]}>
-        <dodecahedronGeometry args={[5.8, 0]} />
+      {/* Acantilados esculpidos en capas */}
+      <mesh geometry={geometries.cliffGeo} position={[-1.4, 2.1, -0.5]}>
         <meshStandardMaterial
-          color={island.landmark === 'skull' ? '#494256' : '#4a6b53'}
+          color={island.landmark === 'skull' ? '#494256' : '#4d6b53'}
           flatShading
-          roughness={0.85}
+          roughness={0.88}
         />
       </mesh>
-      <mesh position={[3.2, 2.1, -1.8]}>
-        <dodecahedronGeometry args={[3.4, 0]} />
+      <mesh
+        geometry={geometries.cliffGeo}
+        position={[3.4, 1.2, -2.1]}
+        scale={[0.62, 0.72, 0.62]}
+        rotation={[0, 1.4, 0]}
+      >
         <meshStandardMaterial
           color={island.landmark === 'skull' ? '#363042' : '#585168'}
           flatShading
@@ -129,32 +195,57 @@ function IslandMesh({
         />
       </mesh>
 
-      {/* Palmeras animadas con el viento */}
-      <PalmTree position={[-4.5, 1.3, 3.2]} scale={1.05} phaseOffset={0.4} />
-      <PalmTree position={[4.6, 1.3, 2.8]} scale={0.9} phaseOffset={1.9} />
-      <PalmTree position={[-2.2, 1.4, -4.8]} scale={1.1} phaseOffset={3.1} />
+      {/* Palmeras curvas arqueadas */}
+      <CurvedPalm
+        position={[-4.8, 1.2, 2.8]}
+        rotationY={0.8}
+        scale={1.05}
+        phaseOffset={0.4}
+        trunkGeo={geometries.trunkGeo}
+        frondGeo={geometries.frondGeo}
+      />
+      <CurvedPalm
+        position={[4.6, 1.2, 2.2]}
+        rotationY={-1.2}
+        scale={0.9}
+        phaseOffset={1.9}
+        trunkGeo={geometries.trunkGeo}
+        frondGeo={geometries.frondGeo}
+      />
+      <CurvedPalm
+        position={[-1.8, 1.3, -5.0]}
+        rotationY={2.5}
+        scale={1.12}
+        phaseOffset={3.1}
+        trunkGeo={geometries.trunkGeo}
+        frondGeo={geometries.frondGeo}
+      />
 
-      {/* Letrero de madera en la costa mirando hacia el sur (+Z) */}
-      <group position={[0, 1.6, 8.2]}>
-        <mesh position={[0, 1.3, 0]}>
-          <cylinderGeometry args={[0.14, 0.16, 2.8, 5]} />
+      {/* Letrero de madera con doble poste en la orilla (idéntico al concepto) */}
+      <group position={[0, 1.4, 8.6]}>
+        <mesh position={[-1.45, 1.35, 0]}>
+          <cylinderGeometry args={[0.1, 0.12, 2.9, 6]} />
           <meshStandardMaterial color="#4a2e1b" flatShading />
         </mesh>
-        <mesh position={[0, 2.6, 0]}>
-          <boxGeometry args={[4.4, 1.45, 0.22]} />
+        <mesh position={[1.45, 1.35, 0]}>
+          <cylinderGeometry args={[0.1, 0.12, 2.9, 6]} />
+          <meshStandardMaterial color="#4a2e1b" flatShading />
+        </mesh>
+        <mesh position={[0, 2.25, 0]}>
+          <boxGeometry args={[4.4, 1.35, 0.16]} />
           <meshStandardMaterial map={signTexture} flatShading />
         </mesh>
       </group>
 
       {/* Landmark específico */}
       {island.landmark === 'lighthouse' && (
-        <group position={[2.2, 2.5, -1.5]}>
+        <group position={[2.2, 2.8, -1.2]}>
           <mesh position={[0, 3.2, 0]}>
-            <cylinderGeometry args={[0.75, 1.2, 6.4, 7]} />
+            <cylinderGeometry args={[0.72, 1.22, 6.4, 8]} />
             <meshStandardMaterial color="#f1f5f9" flatShading />
           </mesh>
           <mesh position={[0, 6.6, 0]}>
-            <cylinderGeometry args={[0.85, 0.85, 0.9, 7]} />
+            <cylinderGeometry args={[0.85, 0.85, 0.9, 8]} />
             <meshStandardMaterial
               color="#38bdf8"
               emissive="#38bdf8"
@@ -162,7 +253,6 @@ function IslandMesh({
               flatShading
             />
           </mesh>
-          {/* Haz de luz giratorio del faro */}
           <group ref={lighthouseLightRef} position={[0, 6.6, 0]}>
             <mesh position={[0, 0, 4.5]} rotation={[Math.PI / 2, 0, 0]}>
               <coneGeometry args={[1.6, 8.5, 6]} />
@@ -170,24 +260,24 @@ function IslandMesh({
             </mesh>
           </group>
           <mesh position={[0, 7.6, 0]}>
-            <coneGeometry args={[1.1, 1.2, 7]} />
+            <coneGeometry args={[1.1, 1.2, 8]} />
             <meshStandardMaterial color="#b91c1c" flatShading />
           </mesh>
         </group>
       )}
 
       {island.landmark === 'treasure' && (
-        <group position={[1.8, 1.8, 3.6]}>
-          <mesh position={[0, 0.55, 0]}>
-            <boxGeometry args={[2.1, 1.2, 1.3]} />
+        <group position={[2.0, 1.65, 3.6]}>
+          <mesh position={[0, 0.5, 0]}>
+            <cylinderGeometry args={[1.1, 1.2, 1.0, 6]} />
             <meshStandardMaterial color="#78350f" flatShading />
           </mesh>
-          <mesh position={[0, 1.25, 0]}>
-            <boxGeometry args={[2.2, 0.3, 1.4]} />
+          <mesh position={[0, 1.05, 0]} rotation={[0, 0, Math.PI / 2]}>
+            <cylinderGeometry args={[0.58, 0.58, 1.9, 6]} />
             <meshStandardMaterial
               color="#fbbf24"
               emissive="#d97706"
-              emissiveIntensity={1.4}
+              emissiveIntensity={1.3}
               flatShading
             />
           </mesh>
@@ -195,13 +285,13 @@ function IslandMesh({
       )}
 
       {island.landmark === 'observatory' && (
-        <group position={[0, 5.2, 0]}>
+        <group position={[0, 5.4, 0]}>
           <mesh position={[0, 1.6, 0]}>
-            <cylinderGeometry args={[1.2, 1.6, 3.2, 6]} />
+            <cylinderGeometry args={[1.1, 1.65, 3.4, 7]} />
             <meshStandardMaterial color="#334155" flatShading />
           </mesh>
-          <mesh position={[0, 3.8, 0]}>
-            <octahedronGeometry args={[1.3, 0]} />
+          <mesh position={[0, 3.9, 0]}>
+            <octahedronGeometry args={[1.35, 0]} />
             <meshStandardMaterial
               color="#34d399"
               emissive="#10b981"
@@ -213,13 +303,13 @@ function IslandMesh({
       )}
 
       {island.landmark === 'skull' && (
-        <group position={[0, 5.4, 0]}>
-          <mesh position={[0, 1.4, 0]}>
+        <group position={[0, 5.6, 0]}>
+          <mesh position={[0, 1.4, 0]} scale={[1, 1.15, 1]}>
             <dodecahedronGeometry args={[2.6, 0]} />
             <meshStandardMaterial color="#cbd5e1" flatShading />
           </mesh>
           <mesh position={[-0.75, 1.6, 1.95]}>
-            <boxGeometry args={[0.62, 0.62, 0.4]} />
+            <octahedronGeometry args={[0.42, 0]} />
             <meshStandardMaterial
               color="#fb7185"
               emissive="#e11d48"
@@ -228,7 +318,7 @@ function IslandMesh({
             />
           </mesh>
           <mesh position={[0.75, 1.6, 1.95]}>
-            <boxGeometry args={[0.62, 0.62, 0.4]} />
+            <octahedronGeometry args={[0.42, 0]} />
             <meshStandardMaterial
               color="#fb7185"
               emissive="#e11d48"
@@ -239,8 +329,8 @@ function IslandMesh({
         </group>
       )}
 
-      {/* Baliza superior para ubicar la isla desde lejos */}
-      <mesh ref={beaconRef} position={[0, 13.5, 0]}>
+      {/* Baliza superior */}
+      <mesh ref={beaconRef} position={[0, 14.5, 0]}>
         <octahedronGeometry args={[isNearby ? 1.35 : 0.9, 0]} />
         <meshStandardMaterial
           color={island.accentColor}
@@ -296,7 +386,7 @@ function FloatingBarrel({
       }}
     >
       <mesh>
-        <cylinderGeometry args={[0.95, 0.95, 1.55, 8]} />
+        <cylinderGeometry args={[0.92, 0.92, 1.55, 8]} />
         <meshStandardMaterial color="#b45309" flatShading />
       </mesh>
       <mesh position={[0, 1.0, 0]}>
@@ -318,6 +408,7 @@ export function Islands({
   hitTargets,
   onHitTarget,
 }: IslandsProps) {
+  const geometries = useMemo(() => buildPalmGeometries(), []);
   const skullIsland = ISLANDS.find((i) => i.id === 'minigame');
 
   return (
@@ -327,10 +418,10 @@ export function Islands({
           key={island.id}
           island={island}
           isNearby={nearbyIsland === island.id}
+          geometries={geometries}
         />
       ))}
 
-      {/* Barriles del mini-juego cabalgando el oleaje real */}
       {skullIsland &&
         TARGET_OFFSETS.map(([ox, oz], idx) => {
           if (hitTargets.includes(idx)) return null;

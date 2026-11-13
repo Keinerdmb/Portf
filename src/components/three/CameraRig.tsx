@@ -99,13 +99,13 @@ export function CameraRig({
     const waveOffset = getWaveHeight(ship.x, ship.z, t) * 0.7;
 
     // 1ra persona POV fiel a la imagen: justo detrás del timón viendo rueda, cubierta, farol y vela
-    const fpPosX = ship.x + sinH * 2.05;
-    const fpPosY = 2.42 + waveOffset;
-    const fpPosZ = ship.z + cosH * 2.05;
+    const fpPosX = ship.x + sinH * 2.15;
+    const fpPosY = 2.38 + waveOffset;
+    const fpPosZ = ship.z + cosH * 2.15;
 
-    const fpLookX = ship.x - sinH * 12;
-    const fpLookY = 1.65 + waveOffset * 0.7;
-    const fpLookZ = ship.z - cosH * 12;
+    const fpLookX = ship.x - sinH * 11;
+    const fpLookY = 1.62 + waveOffset * 0.7;
+    const fpLookZ = ship.z - cosH * 11;
 
     // 3ra persona: cámara alejada atrás y arriba mostrando el barco completo
     const tpPosX = ship.x + sinH * 15.5;

@@ -1,28 +1,57 @@
+import { useEffect, useRef } from 'react';
 import { ISLANDS } from '../../data/islands';
-import type { IslandData } from '../../types/portfolio';
+import type { IslandData, ShipTelemetry } from '../../types/portfolio';
 
 interface WorldMapModalProps {
-  shipPosition: { x: number; z: number };
+  shipTelemetryRef: React.RefObject<ShipTelemetry>;
   onClose: () => void;
   onFastTravel: (island: IslandData) => void;
 }
 
+const toMapPct = (val: number, min: number, max: number) =>
+  Math.max(6, Math.min(94, ((val - min) / (max - min)) * 100));
+
 export function WorldMapModal({
-  shipPosition,
+  shipTelemetryRef,
   onClose,
   onFastTravel,
 }: WorldMapModalProps) {
-  // Mapeamos coordenadas del mundo [-140, 140] a porcentaje del mapa [0%, 100%]
-  const toMapPct = (val: number, min: number, max: number) =>
-    Math.max(8, Math.min(92, ((val - min) / (max - min)) * 100));
+  const shipMarkerRef = useRef<HTMLDivElement>(null);
+  const coordsLabelRef = useRef<HTMLSpanElement>(null);
+
+  // Actualizamos en tiempo real la ubicación y orientación del barco sobre el mapa sin re-renders
+  useEffect(() => {
+    let rafId = 0;
+
+    const updateMarker = () => {
+      const ship = shipTelemetryRef.current;
+      if (shipMarkerRef.current) {
+        const left = toMapPct(ship.x, -110, 110);
+        const top = toMapPct(ship.z, -140, 50);
+        const deg = (-ship.heading * 180) / Math.PI;
+        shipMarkerRef.current.style.left = `${left}%`;
+        shipMarkerRef.current.style.top = `${top}%`;
+        shipMarkerRef.current.style.transform = `translate(-50%, -50%) rotate(${deg}deg)`;
+      }
+
+      if (coordsLabelRef.current) {
+        coordsLabelRef.current.textContent = `POS (${Math.round(ship.x)}, ${Math.round(ship.z)}) · ${Math.abs(Math.round(ship.speed))} KT`;
+      }
+
+      rafId = requestAnimationFrame(updateMarker);
+    };
+
+    rafId = requestAnimationFrame(updateMarker);
+    return () => cancelAnimationFrame(rafId);
+  }, [shipTelemetryRef]);
 
   return (
-    <div className="absolute inset-0 z-30 flex items-center justify-center bg-slate-950/75 p-4">
-      <div className="w-full max-w-xl rounded-xl border border-amber-300/35 bg-[#121625]/95 p-6 shadow-2xl">
+    <div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center bg-slate-950/55 p-4">
+      <div className="pointer-events-auto w-full max-w-xl rounded-xl border border-amber-300/35 bg-[#121625]/92 p-6 shadow-2xl">
         <div className="flex items-center justify-between border-b border-white/10 pb-3">
           <div>
             <p className="font-mono text-[11px] tracking-widest text-amber-300 uppercase">
-              Carta Náutica
+              Carta Náutica en Vivo
             </p>
             <h2 className="font-display text-xl font-bold text-amber-50">
               MAPA DEL ARCHIPIÉLAGO
@@ -34,13 +63,12 @@ export function WorldMapModal({
             onClick={onClose}
             className="cursor-pointer rounded border border-white/20 px-3 py-1 font-mono text-xs text-slate-300 hover:border-amber-400"
           >
-            CERRAR
+            CERRAR [ESC]
           </button>
         </div>
 
-        {/* Radar visual + botones de Fast Travel */}
+        {/* Radar visual + ubicación en vivo del barco */}
         <div className="relative mt-5 h-64 w-full overflow-hidden rounded-lg border border-sky-400/20 bg-[#0b172a]">
-          {/* Cuadrícula náutica sutil */}
           <div
             className="absolute inset-0 opacity-20"
             style={{
@@ -50,16 +78,34 @@ export function WorldMapModal({
             }}
           />
 
-          {/* Posición actual del barco */}
+          {/* Marcador del puerto de salida */}
           <div
-            className="absolute -translate-x-1/2 -translate-y-1/2"
+            className="absolute -translate-x-1/2 -translate-y-1/2 text-center"
             style={{
-              left: `${toMapPct(shipPosition.x, -110, 110)}%`,
-              top: `${toMapPct(shipPosition.z, -140, 50)}%`,
+              left: `${toMapPct(0, -110, 110)}%`,
+              top: `${toMapPct(0, -140, 50)}%`,
             }}
-            title="Tu barco"
           >
-            <div className="h-3.5 w-3.5 rounded-full border-2 border-white bg-amber-400 shadow-[0_0_10px_#fbbf24]" />
+            <span className="mx-auto block h-2.5 w-2.5 rounded-full border border-amber-200/70 bg-amber-900" />
+            <span className="mt-0.5 block font-mono text-[9px] text-slate-400">
+              MUELLE
+            </span>
+          </div>
+
+          {/* Ubicación en tiempo real del barco (flecha direccional) */}
+          <div
+            ref={shipMarkerRef}
+            className="absolute z-10"
+            style={{ left: '50%', top: '75%' }}
+            title="Tu barco en vivo"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              className="h-5 w-5 text-amber-300 drop-shadow-[0_0_8px_rgba(251,191,36,0.9)]"
+              fill="currentColor"
+            >
+              <path d="M12 2L19 20L12 16L5 20L12 2Z" />
+            </svg>
           </div>
 
           {/* Islas clicables */}
@@ -85,9 +131,12 @@ export function WorldMapModal({
           ))}
         </div>
 
-        <p className="mt-3 text-center font-mono text-xs text-slate-400">
-          Haz clic en cualquier isla para viajar rápido frente a su costa.
-        </p>
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 font-mono text-xs text-slate-400">
+          <span ref={coordsLabelRef} className="text-amber-200/85">
+            POS (0, 0) · 0 KT
+          </span>
+          <span>Puedes seguir navegando o hacer clic en una isla</span>
+        </div>
       </div>
     </div>
   );
