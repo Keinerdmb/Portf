@@ -135,7 +135,7 @@ export function App() {
   }, [phase, nearbyIsland, activeModalIsland, mapOpen, sfxEnabled]);
 
   return (
-    <div className="relative h-screen w-screen overflow-hidden bg-[#2b1e3e]">
+    <div className="relative h-screen w-screen overflow-hidden bg-[#f6bfa0]">
       <WorldScene
         phase={phase}
         isFirstPerson={isFirstPerson}

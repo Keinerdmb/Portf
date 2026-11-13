@@ -242,10 +242,10 @@ export function CompassHud({
           </button>
         )}
 
-        {/* Pie: controles discretos en la esquina derecha como la imagen de referencia */}
+        {/* Pie: controles discretos */}
         <div className="flex w-full items-end justify-between gap-4">
-          <div className="hidden font-mono text-[11px] text-amber-50/85 drop-shadow sm:block">
-            [WASD / FLECHAS] TIMÓN · [E] DESEMBARCAR
+          <div className="hidden font-mono text-[11px] text-amber-50/90 drop-shadow sm:block">
+            [WASD / FLECHAS] TIMÓN · [ARRASTRAR] CÁMARA · [C] CENTRAR · [E] ENTRAR
           </div>
 
           <div className="hidden font-display text-xs tracking-wider text-amber-50/90 drop-shadow sm:block">

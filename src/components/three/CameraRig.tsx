@@ -25,15 +25,24 @@ export function CameraRig({
   boardingProgressRef,
   boardingCharPosRef,
 }: CameraRigProps) {
-  const { camera } = useThree();
+  const { camera, gl } = useThree();
   const zoomRef = useRef(0.95);
   const targetZoomRef = useRef(0.95);
   const lastModeRef = useRef(false);
 
+  // Ángulos libres de cámara controlados al arrastrar el mouse mientras manejas
+  const yawOffsetRef = useRef(0);
+  const targetYawRef = useRef(0);
+  const pitchOffsetRef = useRef(0);
+  const targetPitchRef = useRef(0);
+  const draggingRef = useRef(false);
+  const lastPointerRef = useRef({ x: 0, y: 0 });
+
   useEffect(() => {
+    const dom = gl.domElement;
+
     const onWheel = (e: WheelEvent) => {
       if (phase !== 'sailing') return;
-      // Rueda arriba acerca hacia 1ra persona; abajo aleja a 3ra persona
       targetZoomRef.current = THREE.MathUtils.clamp(
         targetZoomRef.current + e.deltaY * 0.0011,
         0,
@@ -41,9 +50,51 @@ export function CameraRig({
       );
     };
 
+    const onPointerDown = (e: PointerEvent) => {
+      if (phase !== 'sailing') return;
+      draggingRef.current = true;
+      lastPointerRef.current = { x: e.clientX, y: e.clientY };
+    };
+
+    const onPointerMove = (e: PointerEvent) => {
+      if (!draggingRef.current || phase !== 'sailing') return;
+      const dx = e.clientX - lastPointerRef.current.x;
+      const dy = e.clientY - lastPointerRef.current.y;
+      lastPointerRef.current = { x: e.clientX, y: e.clientY };
+
+      targetYawRef.current -= dx * 0.0055;
+      targetPitchRef.current = THREE.MathUtils.clamp(
+        targetPitchRef.current + dy * 0.004,
+        -0.38,
+        0.52
+      );
+    };
+
+    const onPointerUp = () => {
+      draggingRef.current = false;
+    };
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.code === 'KeyC' && phase === 'sailing') {
+        targetYawRef.current = 0;
+        targetPitchRef.current = 0;
+      }
+    };
+
+    dom.addEventListener('pointerdown', onPointerDown);
+    window.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('pointerup', onPointerUp);
     window.addEventListener('wheel', onWheel, { passive: true });
-    return () => window.removeEventListener('wheel', onWheel);
-  }, [phase]);
+    window.addEventListener('keydown', onKeyDown);
+
+    return () => {
+      dom.removeEventListener('pointerdown', onPointerDown);
+      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerup', onPointerUp);
+      window.removeEventListener('wheel', onWheel);
+      window.removeEventListener('keydown', onKeyDown);
+    };
+  }, [phase, gl.domElement]);
 
   useEffect(() => {
     if (cameraModeRequest) {
@@ -56,7 +107,6 @@ export function CameraRig({
     const t = clock.getElapsedTime();
 
     if (phase === 'title') {
-      // Toma cinematográfica lateral del muelle, barco y atardecer dorado
       TEMP_TARGET_POS.set(-9.0, 4.1, 10.2);
       TEMP_LOOK_AT.set(-0.5, 2.0, 1.4);
       camera.position.lerp(TEMP_TARGET_POS, dt * 3);
@@ -93,28 +143,44 @@ export function CameraRig({
       onZoomModeChange(isFp);
     }
 
+    // Limitamos el ángulo horizontal solo ligeramente si estamos en 1ra persona; en 3ra es 360°
+    if (isFp) {
+      targetYawRef.current = THREE.MathUtils.clamp(targetYawRef.current, -2.1, 2.1);
+    }
+
+    yawOffsetRef.current = THREE.MathUtils.lerp(yawOffsetRef.current, targetYawRef.current, dt * 10);
+    pitchOffsetRef.current = THREE.MathUtils.lerp(
+      pitchOffsetRef.current,
+      targetPitchRef.current,
+      dt * 10
+    );
+
     const ship = shipTelemetryRef.current;
     const sinH = Math.sin(ship.heading);
     const cosH = Math.cos(ship.heading);
+    const totalCamYaw = ship.heading + yawOffsetRef.current;
+    const sinCam = Math.sin(totalCamYaw);
+    const cosCam = Math.cos(totalCamYaw);
     const waveOffset = getWaveHeight(ship.x, ship.z, t) * 0.7;
 
-    // 1ra persona POV fiel a la imagen: justo detrás del timón viendo rueda, cubierta, farol y vela
+    // 1ra persona: posición fija detrás del timón, pero puedes girar la cabeza para mirar alrededor
     const fpPosX = ship.x + sinH * 2.15;
     const fpPosY = 2.38 + waveOffset;
     const fpPosZ = ship.z + cosH * 2.15;
 
-    const fpLookX = ship.x - sinH * 11;
-    const fpLookY = 1.62 + waveOffset * 0.7;
-    const fpLookZ = ship.z - cosH * 11;
+    const fpLookX = fpPosX - sinCam * 14;
+    const fpLookY = fpPosY - 0.65 - pitchOffsetRef.current * 8.5;
+    const fpLookZ = fpPosZ - cosCam * 14;
 
-    // 3ra persona: cámara alejada atrás y arriba mostrando el barco completo
-    const tpPosX = ship.x + sinH * 15.5;
-    const tpPosY = 7.4;
-    const tpPosZ = ship.z + cosH * 15.5;
+    // 3ra persona: órbita libre 360° alrededor del barco mientras manejas
+    const orbitDist = 15.5;
+    const tpPosX = ship.x + sinCam * orbitDist;
+    const tpPosY = THREE.MathUtils.clamp(7.2 + pitchOffsetRef.current * 8.5, 2.2, 14.5);
+    const tpPosZ = ship.z + cosCam * orbitDist;
 
-    const tpLookX = ship.x - sinH * 6;
+    const tpLookX = ship.x - sinCam * 3.5;
     const tpLookY = 1.9;
-    const tpLookZ = ship.z - cosH * 6;
+    const tpLookZ = ship.z - cosCam * 3.5;
 
     TEMP_TARGET_POS.set(
       THREE.MathUtils.lerp(fpPosX, tpPosX, z),
@@ -128,7 +194,7 @@ export function CameraRig({
       THREE.MathUtils.lerp(fpLookZ, tpLookZ, z)
     );
 
-    const followSpeed = THREE.MathUtils.lerp(24, 7.5, z);
+    const followSpeed = THREE.MathUtils.lerp(24, 9, z);
     camera.position.lerp(TEMP_TARGET_POS, 1 - Math.exp(-followSpeed * dt));
     SMOOTH_LOOK.lerp(TEMP_LOOK_AT, 1 - Math.exp(-followSpeed * dt));
     camera.lookAt(SMOOTH_LOOK);

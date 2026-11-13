@@ -131,7 +131,7 @@ function CurvedPalm({
             geometry={frondGeo}
             rotation={[-0.18, angle, 0]}
           >
-            <meshStandardMaterial color="#2f6f4e" flatShading side={THREE.DoubleSide} />
+            <meshStandardMaterial color="#38a377" flatShading side={THREE.DoubleSide} />
           </mesh>
         ))}
       </group>
@@ -171,13 +171,13 @@ function IslandMesh({
     <group position={[island.position[0], 0, island.position[1]]}>
       {/* Playa irregular */}
       <mesh geometry={geometries.beachGeo} position={[0, 0.35, 0]}>
-        <meshStandardMaterial color="#dfb07c" flatShading roughness={0.9} />
+        <meshStandardMaterial color="#f2d399" flatShading roughness={0.9} />
       </mesh>
 
-      {/* Acantilados esculpidos en capas */}
+      {/* Acantilados pastel estilo Steven Universe (verde menta + roca lavanda) */}
       <mesh geometry={geometries.cliffGeo} position={[-1.4, 2.1, -0.5]}>
         <meshStandardMaterial
-          color={island.landmark === 'skull' ? '#494256' : '#4d6b53'}
+          color={island.landmark === 'skull' ? '#6d597a' : '#52b788'}
           flatShading
           roughness={0.88}
         />
@@ -189,7 +189,7 @@ function IslandMesh({
         rotation={[0, 1.4, 0]}
       >
         <meshStandardMaterial
-          color={island.landmark === 'skull' ? '#363042' : '#585168'}
+          color={island.landmark === 'skull' ? '#51415c' : '#8d7b9e'}
           flatShading
           roughness={0.9}
         />
@@ -261,7 +261,7 @@ function IslandMesh({
           </group>
           <mesh position={[0, 7.6, 0]}>
             <coneGeometry args={[1.1, 1.2, 8]} />
-            <meshStandardMaterial color="#b91c1c" flatShading />
+            <meshStandardMaterial color="#f47280" flatShading />
           </mesh>
         </group>
       )}

@@ -53,24 +53,24 @@ export function HomeDock() {
       <group position={[-7.5, 0, 12]}>
         <mesh position={[0, 0.35, 0]}>
           <cylinderGeometry args={[8.8, 11.5, 2.4, 10]} />
-          <meshStandardMaterial color="#dfb07c" flatShading roughness={0.9} />
+          <meshStandardMaterial color="#f2d399" flatShading roughness={0.9} />
         </mesh>
         <mesh geometry={cliffGeo} position={[-1.5, 2.1, 1]}>
-          <meshStandardMaterial color="#4a6b53" flatShading roughness={0.85} />
+          <meshStandardMaterial color="#52b788" flatShading roughness={0.85} />
         </mesh>
         <mesh geometry={cliffGeo} position={[2.8, 1.4, -1]} scale={0.6}>
-          <meshStandardMaterial color="#585168" flatShading roughness={0.9} />
+          <meshStandardMaterial color="#8d7b9e" flatShading roughness={0.9} />
         </mesh>
 
         {/* Palmera curva estilizada */}
         <group position={[-2.2, 3.2, -1]}>
           <mesh geometry={trunkGeo}>
-            <meshStandardMaterial color="#6b442a" flatShading />
+            <meshStandardMaterial color="#7d4f32" flatShading />
           </mesh>
           <group ref={palmRef} position={[1.0, 4.0, 0.3]}>
             {[0, 1.05, 2.1, 3.15, 4.2, 5.25].map((angle) => (
               <mesh key={angle} geometry={frondGeo} rotation={[-0.18, angle, 0]}>
-                <meshStandardMaterial color="#2f6f4e" flatShading side={THREE.DoubleSide} />
+                <meshStandardMaterial color="#38a377" flatShading side={THREE.DoubleSide} />
               </mesh>
             ))}
           </group>

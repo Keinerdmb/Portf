@@ -37,8 +37,8 @@ export function TitleOverlay({ onStart }: TitleOverlayProps) {
         </div>
       </div>
 
-      <div className="font-mono text-xs text-amber-50/80">
-        [WASD / FLECHAS] NAVEGAR · [RUEDA MOUSE] 1RA / 3RA PERSONA
+      <div className="font-mono text-xs text-amber-50/85">
+        [WASD / FLECHAS] TIMÓN · [ARRASTRAR MOUSE] CÁMARA · [RUEDA] 1RA / 3RA PERSONA
       </div>
     </div>
   );

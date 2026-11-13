@@ -120,16 +120,19 @@ export function WorldScene({
       gl={{
         antialias: true,
         powerPreference: 'high-performance',
+        toneMapping: THREE.ACESFilmicToneMapping,
+        toneMappingExposure: 1.05,
       }}
-      camera={{ fov: 60, near: 0.2, far: 340, position: [-9.0, 4.1, 10.2] }}
+      camera={{ fov: 60, near: 0.2, far: 900, position: [-9.0, 4.1, 10.2] }}
     >
-      {/* Niebla dorada cálida para fundir las islas lejanas con el cielo del atardecer */}
-      <fog attach="fog" args={['#d99b78', 85, 240]} />
+      {/* Fondo pastel cálido y neblina atmosférica suave estilo Steven Universe */}
+      <color attach="background" args={['#f6bfa0']} />
+      <fog attach="fog" args={['#f3b59e', 110, 310]} />
 
-      {/* Iluminación de atardecer cálido + reflejo turquesa */}
-      <hemisphereLight args={['#ffd6a5', '#135d66', 1.2]} />
-      <directionalLight position={[-32, 22, -110]} intensity={2.4} color="#ffcf87" />
-      <directionalLight position={[40, 18, 50]} intensity={0.45} color="#7dd3fc" />
+      {/* Iluminación pastel luminosa */}
+      <hemisphereLight args={['#ffd9e2', '#2ec4b6', 1.35]} />
+      <directionalLight position={[-45, 34, -140]} intensity={2.1} color="#ffe4b5" />
+      <directionalLight position={[50, 24, 60]} intensity={0.65} color="#a5f3fc" />
 
       <SkyDome />
       <Ocean shipPosRef={shipPosRef} />

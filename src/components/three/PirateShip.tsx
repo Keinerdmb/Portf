@@ -448,7 +448,7 @@ export function PirateShip({
           </mesh>
           <mesh ref={sailMeshRef} geometry={sailGeo} position={[0.05, 0.05, 0]}>
             <meshStandardMaterial
-              color="#f6e3c5"
+              color="#fff4e6"
               roughness={0.82}
               flatShading
               side={THREE.DoubleSide}
