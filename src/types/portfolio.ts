@@ -29,6 +29,8 @@ export interface IslandData {
 
 export interface ShipTelemetry {
   x: number;
+  y: number;
+  velY: number;
   z: number;
   /** Ángulo de dirección en radianes (0 = mirando hacia -Z / Norte) */
   heading: number;
@@ -38,9 +40,15 @@ export interface ShipTelemetry {
   windAlignment: number;
 }
 
-export interface WindState {
-  /** Dirección hacia donde sopla el viento en radianes (0 = hacia -Z) */
-  angle: number;
-  /** Velocidad del viento en nudos (ej. 8..16) */
-  knots: number;
+export interface OceanParams {
+  /** Velocidad del viento en nudos (2 .. 25) */
+  windSpeed: number;
+  /** Dirección de la corriente y oleaje principal en radianes (0 .. 2π) */
+  currentAngle: number;
+  /** Altura mínima variable de las olas en metros */
+  minWaveHeight: number;
+  /** Altura máxima variable de las olas en metros */
+  maxWaveHeight: number;
+  /** Multiplicador de frecuencia de oleaje (0.5 = muy suave, 1.5 = picado) */
+  waveFrequency: number;
 }

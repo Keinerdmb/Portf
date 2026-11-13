@@ -2,10 +2,11 @@ import { useFrame } from '@react-three/fiber';
 import { useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { ISLANDS } from '../../data/islands';
-import { getWindState } from '../../utils/oceanMath';
+import type { OceanParams } from '../../types/portfolio';
 
 interface WindAndSkyLifeProps {
   shipPosRef: React.RefObject<{ x: number; z: number }>;
+  oceanParamsRef: React.RefObject<OceanParams>;
 }
 
 const WIND_COUNT = 22;
@@ -16,7 +17,7 @@ const STREAKS_META = Array.from({ length: WIND_COUNT }, (_, i) => ({
   speedOffset: 0.8 + (i % 4) * 0.2,
 }));
 
-export function WindAndSkyLife({ shipPosRef }: WindAndSkyLifeProps) {
+export function WindAndSkyLife({ shipPosRef, oceanParamsRef }: WindAndSkyLifeProps) {
   const streakRefs = useRef<(THREE.Mesh | null)[]>([]);
   const birdGroupsRef = useRef<(THREE.Group | null)[]>([]);
   const leftWingsRef = useRef<(THREE.Mesh | null)[]>([]);
@@ -48,10 +49,10 @@ export function WindAndSkyLife({ shipPosRef }: WindAndSkyLifeProps) {
   useFrame(({ clock }, rawDelta) => {
     const dt = Math.min(rawDelta, 0.05);
     const t = clock.getElapsedTime();
-    const wind = getWindState(t);
+    const params = oceanParamsRef.current;
 
-    const sinW = Math.sin(wind.angle);
-    const cosW = Math.cos(wind.angle);
+    const sinW = Math.sin(params.currentAngle);
+    const cosW = Math.cos(params.currentAngle);
     const sx = shipPosRef.current.x;
     const sz = shipPosRef.current.z;
 
@@ -62,18 +63,17 @@ export function WindAndSkyLife({ shipPosRef }: WindAndSkyLifeProps) {
       const mesh = streakRefs.current[i];
       if (!mesh) continue;
 
-      const travel = wind.knots * 1.3 * meta.speedOffset * dt;
-      pos.ox -= sinW * travel;
+      const travel = params.windSpeed * 1.45 * meta.speedOffset * dt;
+      pos.ox += sinW * travel;
       pos.oz -= cosW * travel;
 
-      // Envolvemos las partículas dentro de un radio de 55 unidades del barco
       if (pos.ox > 55) pos.ox -= 110;
       if (pos.ox < -55) pos.ox += 110;
       if (pos.oz > 55) pos.oz -= 110;
       if (pos.oz < -55) pos.oz += 110;
 
       mesh.position.set(sx + pos.ox, meta.y, sz + pos.oz);
-      mesh.rotation.y = wind.angle;
+      mesh.rotation.y = -params.currentAngle;
     }
 
     // Gaviotas planeando y batiendo alas suavemente

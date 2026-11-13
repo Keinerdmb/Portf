@@ -2,8 +2,17 @@ import { useFrame } from '@react-three/fiber';
 import { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { ISLANDS } from '../../data/islands';
-import type { GamePhase, IslandId, ShipTelemetry } from '../../types/portfolio';
-import { getWaveHeight, getWindState, WORLD_COLLIDERS } from '../../utils/oceanMath';
+import type {
+  GamePhase,
+  IslandId,
+  OceanParams,
+  ShipTelemetry,
+} from '../../types/portfolio';
+import {
+  sampleGerstnerSurface,
+  stepBuoyantBody,
+  WORLD_COLLIDERS,
+} from '../../utils/oceanMath';
 import { PirateCharacter } from './PirateCharacter';
 
 interface PirateShipProps {
@@ -11,6 +20,7 @@ interface PirateShipProps {
   isFirstPerson: boolean;
   shipTelemetryRef: React.RefObject<ShipTelemetry>;
   shipPosRef: React.RefObject<{ x: number; z: number }>;
+  oceanParamsRef: React.RefObject<OceanParams>;
   activeModalIsland: IslandId | null;
   onNearbyIslandChange: (islandId: IslandId | null) => void;
   onHullCollision: () => void;
@@ -26,10 +36,6 @@ interface HullStation {
   sheerY: number;
 }
 
-/**
- * Construye el casco lofted con bordas inclinadas (flare) y línea de arrufo curva
- * (sube en proa y popa, y hace un escalón suave junto al timón igual que la referencia).
- */
 function buildSculptedBoatGeometries() {
   const stations: HullStation[] = [
     { z: -4.95, halfW: 0.04, keelY: 0.45, sheerY: 1.56 },
@@ -38,12 +44,11 @@ function buildSculptedBoatGeometries() {
     { z: -1.6, halfW: 1.44, keelY: -0.25, sheerY: 1.24 },
     { z: -0.2, halfW: 1.48, keelY: -0.25, sheerY: 1.24 },
     { z: 0.9, halfW: 1.42, keelY: -0.22, sheerY: 1.28 },
-    { z: 1.5, halfW: 1.35, keelY: -0.18, sheerY: 1.46 }, // Escalón junto al timón
+    { z: 1.5, halfW: 1.35, keelY: -0.18, sheerY: 1.46 },
     { z: 2.5, halfW: 1.22, keelY: -0.1, sheerY: 1.52 },
     { z: 3.15, halfW: 1.05, keelY: 0.05, sheerY: 1.58 },
   ];
 
-  // Generamos la malla exterior del casco + interior de las bordas
   const hullVerts: number[] = [];
   const deckVerts: number[] = [];
 
@@ -65,55 +70,43 @@ function buildSculptedBoatGeometries() {
   for (let i = 0; i < stations.length - 1; i += 1) {
     const s0 = stations[i];
     const s1 = stations[i + 1];
-
-    const deckY0 = 0.78;
-    const deckY1 = 0.78;
+    const deckY = 0.78;
     const thickness = 0.11;
 
-    // Puntos estación i (exterior)
     const k0 = new THREE.Vector3(0, s0.keelY, s0.z);
     const lb0 = new THREE.Vector3(-s0.halfW * 0.72, 0.25, s0.z);
     const rb0 = new THREE.Vector3(s0.halfW * 0.72, 0.25, s0.z);
     const lt0 = new THREE.Vector3(-s0.halfW, s0.sheerY, s0.z);
     const rt0 = new THREE.Vector3(s0.halfW, s0.sheerY, s0.z);
 
-    // Puntos estación i+1 (exterior)
     const k1 = new THREE.Vector3(0, s1.keelY, s1.z);
     const lb1 = new THREE.Vector3(-s1.halfW * 0.72, 0.25, s1.z);
     const rb1 = new THREE.Vector3(s1.halfW * 0.72, 0.25, s1.z);
     const lt1 = new THREE.Vector3(-s1.halfW, s1.sheerY, s1.z);
     const rt1 = new THREE.Vector3(s1.halfW, s1.sheerY, s1.z);
 
-    // Casco exterior (babor y estribor)
     pushQuad(hullVerts, k0, k1, lb1, lb0);
     pushQuad(hullVerts, lb0, lb1, lt1, lt0);
     pushQuad(hullVerts, k0, rb0, rb1, k1);
     pushQuad(hullVerts, rb0, rt0, rt1, rb1);
 
-    // Bordas interiores y regala superior (rim)
     const lti0 = new THREE.Vector3(-Math.max(0, s0.halfW - thickness), s0.sheerY, s0.z);
     const lti1 = new THREE.Vector3(-Math.max(0, s1.halfW - thickness), s1.sheerY, s1.z);
     const rti0 = new THREE.Vector3(Math.max(0, s0.halfW - thickness), s0.sheerY, s0.z);
     const rti1 = new THREE.Vector3(Math.max(0, s1.halfW - thickness), s1.sheerY, s1.z);
 
-    const ld0 = new THREE.Vector3(-Math.max(0, s0.halfW * 0.85 - thickness), deckY0, s0.z);
-    const ld1 = new THREE.Vector3(-Math.max(0, s1.halfW * 0.85 - thickness), deckY1, s1.z);
-    const rd0 = new THREE.Vector3(Math.max(0, s0.halfW * 0.85 - thickness), deckY0, s0.z);
-    const rd1 = new THREE.Vector3(Math.max(0, s1.halfW * 0.85 - thickness), deckY1, s1.z);
+    const ld0 = new THREE.Vector3(-Math.max(0, s0.halfW * 0.85 - thickness), deckY, s0.z);
+    const ld1 = new THREE.Vector3(-Math.max(0, s1.halfW * 0.85 - thickness), deckY, s1.z);
+    const rd0 = new THREE.Vector3(Math.max(0, s0.halfW * 0.85 - thickness), deckY, s0.z);
+    const rd1 = new THREE.Vector3(Math.max(0, s1.halfW * 0.85 - thickness), deckY, s1.z);
 
-    // Regala superior (babor y estribor)
     pushQuad(hullVerts, lt0, lt1, lti1, lti0);
     pushQuad(hullVerts, rti0, rti1, rt1, rt0);
-
-    // Cara interior de las bordas
     pushQuad(hullVerts, lti0, lti1, ld1, ld0);
     pushQuad(hullVerts, rd0, rd1, rti1, rti0);
-
-    // Piso de cubierta
     pushQuad(deckVerts, ld0, ld1, rd1, rd0);
   }
 
-  // Espejo de popa (cierre trasero)
   const last = stations[stations.length - 1];
   const lk = new THREE.Vector3(0, last.keelY, last.z);
   const llb = new THREE.Vector3(-last.halfW * 0.72, 0.25, last.z);
@@ -131,20 +124,16 @@ function buildSculptedBoatGeometries() {
   deckGeo.setAttribute('position', new THREE.Float32BufferAttribute(deckVerts, 3));
   deckGeo.computeVertexNormals();
 
-  // Vela cangreja/latina subdividida con curvatura orgánica del viento
   const sailGeo = new THREE.PlaneGeometry(4.2, 4.4, 7, 7);
   const posAttr = sailGeo.attributes.position as THREE.BufferAttribute;
   for (let i = 0; i < posAttr.count; i += 1) {
-    const px = posAttr.getX(i) + 2.1; // 0..4.2 desde el mástil hacia afuera
-    const py = posAttr.getY(i) + 2.2; // 0..4.4 altura
+    const px = posAttr.getX(i) + 2.1;
+    const py = posAttr.getY(i) + 2.2;
     const u = px / 4.2;
     const v = py / 4.4;
-
-    // Forma triangular/cangreja: se estrecha arriba en v -> 1
     const maxWidthAtV = THREE.MathUtils.lerp(4.2, 0.55, v * 0.92);
     const nx = u * maxWidthAtV;
     const ny = py + u * 0.45 * (1 - v);
-    // Panza suave de viento
     const belly = Math.sin(u * Math.PI) * Math.sin(v * Math.PI) * 0.65;
     posAttr.setXYZ(i, nx, ny, belly);
   }
@@ -158,6 +147,7 @@ export function PirateShip({
   isFirstPerson,
   shipTelemetryRef,
   shipPosRef,
+  oceanParamsRef,
   activeModalIsland,
   onNearbyIslandChange,
   onHullCollision,
@@ -195,7 +185,7 @@ export function PirateShip({
     const dt = Math.min(rawDelta, 0.05);
     const t = clock.getElapsedTime();
     const state = shipTelemetryRef.current;
-    const wind = getWindState(t);
+    const params = oceanParamsRef.current;
 
     let targetTurn = 0;
     let thrust = 0;
@@ -211,10 +201,12 @@ export function PirateShip({
       targetTurn += mobileInputRef.current.turn;
     }
 
-    const windAlign = Math.cos(state.heading - wind.angle);
+    // Física de viento y corriente en tiempo real (producto punto entre proa y viento)
+    const windAlign = Math.cos(state.heading + params.currentAngle);
     state.windAlignment = windAlign;
-    const windBonus = 1 + windAlign * 0.24;
-    const maxSpeed = 19 * windBonus;
+    const windScale = 0.75 + (params.windSpeed / 15) * 0.45;
+    const windBonus = windScale * (1 + windAlign * 0.25);
+    const maxSpeed = 18 * windBonus;
 
     if (thrust !== 0) {
       const targetSpd = thrust > 0 ? thrust * maxSpeed : thrust * 10;
@@ -229,6 +221,13 @@ export function PirateShip({
 
     state.x -= Math.sin(state.heading) * state.speed * dt;
     state.z -= Math.cos(state.heading) * state.speed * dt;
+
+    // Deriva sutil por corriente del agua cuando navega
+    if (phase === 'sailing') {
+      const currentDrift = (params.windSpeed / 25) * 0.85;
+      state.x += Math.sin(params.currentAngle) * currentDrift * dt;
+      state.z -= Math.cos(params.currentAngle) * currentDrift * dt;
+    }
 
     // Colisiones reales con islas, muelle y costa
     if (phase === 'sailing') {
@@ -266,36 +265,39 @@ export function PirateShip({
     shipPosRef.current.x = state.x;
     shipPosRef.current.z = state.z;
 
-    // Flotación sincronizada con el oleaje en 4 puntos
+    // Flotabilidad de cuerpo rígido sobre 4 puntos del casco usando Gerstner
     const sinH = Math.sin(state.heading);
     const cosH = Math.cos(state.heading);
 
-    const bowH = getWaveHeight(state.x - sinH * 3.5, state.z - cosH * 3.5, t);
-    const sternH = getWaveHeight(state.x + sinH * 2.5, state.z + cosH * 2.5, t);
-    const portH = getWaveHeight(state.x - cosH * 1.2, state.z + sinH * 1.2, t);
-    const starH = getWaveHeight(state.x + cosH * 1.2, state.z - sinH * 1.2, t);
+    const bowS = sampleGerstnerSurface(state.x - sinH * 3.5, state.z - cosH * 3.5, t, params);
+    const sternS = sampleGerstnerSurface(state.x + sinH * 2.5, state.z + cosH * 2.5, t, params);
+    const portS = sampleGerstnerSurface(state.x - cosH * 1.2, state.z + sinH * 1.2, t, params);
+    const starS = sampleGerstnerSurface(state.x + cosH * 1.2, state.z - sinH * 1.2, t, params);
 
-    const avgWaveY = (bowH + sternH + portH + starH) * 0.25;
-    const wavePitch = Math.atan2(bowH - sternH, 6.0);
-    const waveRoll = Math.atan2(portH - starH, 2.4);
+    const avgWaveY = (bowS.height + sternS.height + portS.height + starS.height) * 0.25;
+    const buoyant = stepBuoyantBody(state.y, state.velY, avgWaveY, dt, 24, 5.2, 0.14);
+    state.y = buoyant.y;
+    state.velY = buoyant.velY;
 
+    const wavePitch = Math.atan2(bowS.height - sternS.height, 6.0);
+    const waveRoll = Math.atan2(portS.height - starS.height, 2.4);
     impactRollRef.current = THREE.MathUtils.lerp(impactRollRef.current, 0, dt * 4);
 
     if (shipGroupRef.current) {
-      const targetPitch = wavePitch * 0.52 + (state.speed / 20) * 0.035;
-      const targetRoll = waveRoll * 0.48 - state.steerAngle * 0.08 + impactRollRef.current;
+      const targetPitch = wavePitch * 0.65 + (state.speed / 20) * 0.035;
+      const targetRoll = waveRoll * 0.6 - state.steerAngle * 0.08 + impactRollRef.current;
 
-      shipGroupRef.current.position.set(state.x, avgWaveY - 0.12, state.z);
+      shipGroupRef.current.position.set(state.x, state.y, state.z);
       shipGroupRef.current.rotation.x = THREE.MathUtils.lerp(
         shipGroupRef.current.rotation.x,
         targetPitch,
-        dt * 6
+        dt * 6.5
       );
       shipGroupRef.current.rotation.y = state.heading;
       shipGroupRef.current.rotation.z = THREE.MathUtils.lerp(
         shipGroupRef.current.rotation.z,
         targetRoll,
-        dt * 6
+        dt * 6.5
       );
     }
 
@@ -304,7 +306,7 @@ export function PirateShip({
     }
 
     if (boomGroupRef.current) {
-      const relWind = wind.angle - state.heading;
+      const relWind = -(state.heading + params.currentAngle);
       const sailSweep = Math.sin(relWind) * 0.3 + 0.56;
       boomGroupRef.current.rotation.y = THREE.MathUtils.lerp(
         boomGroupRef.current.rotation.y,
@@ -314,13 +316,17 @@ export function PirateShip({
     }
 
     if (sailMeshRef.current) {
-      const billow = 1 + (Math.max(state.speed, 0) / 22) * 0.35 + Math.sin(t * 3.5) * 0.05;
+      const billow =
+        1 +
+        (params.windSpeed / 25) * 0.25 +
+        (Math.max(state.speed, 0) / 22) * 0.28 +
+        Math.sin(t * 3.5) * 0.04;
       sailMeshRef.current.scale.z = THREE.MathUtils.lerp(sailMeshRef.current.scale.z, billow, dt * 4);
     }
 
     if (flagRef.current) {
-      const relWind = wind.angle - state.heading;
-      flagRef.current.rotation.y = relWind + Math.sin(t * 7) * 0.18;
+      const relWind = -(state.heading + params.currentAngle);
+      flagRef.current.rotation.y = relWind + Math.sin(t * (4 + params.windSpeed * 0.25)) * 0.18;
     }
 
     if (phase === 'sailing') {
@@ -342,7 +348,6 @@ export function PirateShip({
 
   return (
     <group ref={shipGroupRef} position={[0, 0, 0]}>
-      {/* Casco esculpido con bordas inclinadas y arrufo */}
       <mesh geometry={hullGeo}>
         <meshStandardMaterial
           color="#6b4024"
@@ -352,7 +357,6 @@ export function PirateShip({
         />
       </mesh>
 
-      {/* Cubierta interior */}
       <mesh geometry={deckGeo}>
         <meshStandardMaterial
           color="#8f5b38"
@@ -362,7 +366,6 @@ export function PirateShip({
         />
       </mesh>
 
-      {/* Listones de refuerzo / Bancos transversales */}
       {[
         { z: -2.7, w: 1.45, y: 0.92 },
         { z: -1.45, w: 2.35, y: 0.92 },
@@ -375,19 +378,16 @@ export function PirateShip({
         </mesh>
       ))}
 
-      {/* Plataforma elevada de popa para el timonel */}
       <mesh position={[0, 0.9, 2.15]}>
         <cylinderGeometry args={[1.05, 1.2, 0.24, 6]} />
         <meshStandardMaterial color="#6e4326" flatShading />
       </mesh>
 
-      {/* Bauprés delantero */}
       <mesh position={[0, 1.48, -5.5]} rotation={[Math.PI / 2.2, 0, 0]}>
         <cylinderGeometry args={[0.045, 0.09, 2.0, 6]} />
         <meshStandardMaterial color="#5c361e" flatShading />
       </mesh>
 
-      {/* Farol de proa centrado-izquierda (exactamente como en la imagen POV) */}
       <group position={[-0.24, 1.25, -3.5]}>
         <mesh position={[0, 0.12, 0]}>
           <cylinderGeometry args={[0.1, 0.13, 0.22, 6]} />
@@ -409,14 +409,12 @@ export function PirateShip({
         <pointLight position={[0, 0.45, 0]} color="#ffab40" intensity={5.5} distance={11} />
       </group>
 
-      {/* Mástil, obenques dobles (izquierda y derecha) y vela curva con botavara */}
       <group position={[0, 0.78, -0.95]}>
         <mesh position={[0, 3.25, 0]}>
           <cylinderGeometry args={[0.09, 0.15, 6.5, 8]} />
           <meshStandardMaterial color="#3d2415" flatShading />
         </mesh>
 
-        {/* Mesas de guarnición (bloques donde anclan los obenques) */}
         <mesh position={[-1.4, 0.46, 0.45]}>
           <boxGeometry args={[0.14, 0.16, 0.45]} />
           <meshStandardMaterial color="#4a2b18" flatShading />
@@ -426,7 +424,6 @@ export function PirateShip({
           <meshStandardMaterial color="#4a2b18" flatShading />
         </mesh>
 
-        {/* Obenques dobles (enmarcan ambos lados en 1ra persona como la imagen) */}
         {[-1, 1].map((side) => (
           <group key={side}>
             <mesh position={[side * 0.74, 2.95, 0.18]} rotation={[0.04, 0, side * 0.25]}>
@@ -440,7 +437,6 @@ export function PirateShip({
           </group>
         ))}
 
-        {/* Botavara + Vela curva */}
         <group ref={boomGroupRef} position={[0, 1.55, 0]} rotation={[0, 0.56, 0]}>
           <mesh position={[2.0, 0.22, 0]} rotation={[0, 0, Math.PI / 2 - 0.1]}>
             <cylinderGeometry args={[0.055, 0.085, 4.2, 7]} />
@@ -456,7 +452,6 @@ export function PirateShip({
           </mesh>
         </group>
 
-        {/* Banderín de viento en lo alto */}
         <group position={[0, 6.45, 0]}>
           <mesh ref={flagRef} position={[0, 0, -0.45]}>
             <coneGeometry args={[0.16, 0.9, 4]} />
@@ -465,29 +460,24 @@ export function PirateShip({
         </group>
       </group>
 
-      {/* Pedestal y Timón tallado protagonista del POV 1ra persona */}
       <group position={[0, 1.0, 1.38]}>
         <mesh position={[0, 0.36, 0]}>
           <cylinderGeometry args={[0.14, 0.22, 0.72, 6]} />
           <meshStandardMaterial color="#3d2415" flatShading />
         </mesh>
         <group ref={wheelRef} position={[0, 0.75, 0.16]}>
-          {/* Aro principal */}
           <mesh>
             <torusGeometry args={[0.46, 0.058, 7, 14]} />
             <meshStandardMaterial color="#8d5b3a" flatShading />
           </mesh>
-          {/* Aro interno */}
           <mesh>
             <torusGeometry args={[0.24, 0.03, 6, 12]} />
             <meshStandardMaterial color="#6e4226" flatShading />
           </mesh>
-          {/* Maza central */}
           <mesh rotation={[Math.PI / 2, 0, 0]}>
             <cylinderGeometry args={[0.11, 0.11, 0.13, 8]} />
             <meshStandardMaterial color="#d97706" flatShading />
           </mesh>
-          {/* 8 rayos y empuñaduras torneadas */}
           {[0, 1, 2, 3, 4, 5, 6, 7].map((idx) => {
             const ang = (idx * Math.PI) / 4;
             return (
@@ -506,7 +496,6 @@ export function PirateShip({
         </group>
       </group>
 
-      {/* Capitán al timón (oculto en 1ra persona) */}
       {phase === 'sailing' && (
         <group position={[0, 1.02, 2.1]}>
           <PirateCharacter isWalking={false} hiddenInFirstPerson={isFirstPerson} />

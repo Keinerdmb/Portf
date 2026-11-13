@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { CompassHud } from './components/hud/CompassHud';
 import { IslandModal } from './components/hud/IslandModal';
+import { OceanControlsPanel } from './components/hud/OceanControlsPanel';
 import { TitleOverlay } from './components/hud/TitleOverlay';
 import { WorldMapModal } from './components/hud/WorldMapModal';
 import { WorldScene } from './components/three/WorldScene';
@@ -8,8 +9,10 @@ import type {
   GamePhase,
   IslandData,
   IslandId,
+  OceanParams,
   ShipTelemetry,
 } from './types/portfolio';
+import { DEFAULT_OCEAN_PARAMS } from './utils/oceanMath';
 import {
   playCannonHit,
   playHullBump,
@@ -33,12 +36,17 @@ export function App() {
   const [activeModalIsland, setActiveModalIsland] = useState<IslandId | null>(null);
   const [mapOpen, setMapOpen] = useState(false);
 
+  const [oceanPanelOpen, setOceanPanelOpen] = useState(false);
+  const [oceanParams, setOceanParams] = useState<OceanParams>(DEFAULT_OCEAN_PARAMS);
+  const oceanParamsRef = useRef<OceanParams>(DEFAULT_OCEAN_PARAMS);
+
   const [minigameActive, setMinigameActive] = useState(false);
   const [hitTargets, setHitTargets] = useState<number[]>([]);
 
-  // Ref mutable para leer/escribir la posición del barco a 60 FPS sin re-renders
   const shipTelemetryRef = useRef<ShipTelemetry>({
     x: 0,
+    y: 0,
+    velY: 0,
     z: 0,
     heading: 0,
     speed: 0,
@@ -47,6 +55,11 @@ export function App() {
   });
 
   const mobileInputRef = useRef({ forward: 0, turn: 0 });
+
+  const handleOceanParamsChange = (next: OceanParams) => {
+    oceanParamsRef.current = next;
+    setOceanParams(next);
+  };
 
   const handleStart = () => {
     playStartHorn(sfxEnabled);
@@ -109,12 +122,12 @@ export function App() {
     });
   };
 
-  // Atajos globales [E] para desembarcar y [ESC] para cerrar modales
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.code === 'Escape') {
         setActiveModalIsland(null);
         setMapOpen(false);
+        setOceanPanelOpen(false);
         return;
       }
 
@@ -143,6 +156,7 @@ export function App() {
         onZoomModeChange={setIsFirstPerson}
         onBoarded={handleBoarded}
         shipTelemetryRef={shipTelemetryRef}
+        oceanParamsRef={oceanParamsRef}
         nearbyIsland={nearbyIsland}
         activeModalIsland={activeModalIsland}
         onNearbyIslandChange={setNearbyIsland}
@@ -166,6 +180,7 @@ export function App() {
       {phase === 'sailing' && (
         <CompassHud
           shipTelemetryRef={shipTelemetryRef}
+          oceanParamsRef={oceanParamsRef}
           isFirstPerson={isFirstPerson}
           onToggleCamera={handleToggleCamera}
           sfxEnabled={sfxEnabled}
@@ -173,6 +188,11 @@ export function App() {
           onOpenMap={() => {
             playTone(sfxEnabled, 400, 0.06);
             setMapOpen((prev) => !prev);
+          }}
+          oceanPanelOpen={oceanPanelOpen}
+          onToggleOceanPanel={() => {
+            playTone(sfxEnabled, 450, 0.06);
+            setOceanPanelOpen((prev) => !prev);
           }}
           nearbyIsland={nearbyIsland}
           onOpenIsland={(id) => {
@@ -184,6 +204,14 @@ export function App() {
           minigameTotal={TOTAL_TARGETS}
           onStopMinigame={() => setMinigameActive(false)}
           mobileInputRef={mobileInputRef}
+        />
+      )}
+
+      {oceanPanelOpen && phase === 'sailing' && (
+        <OceanControlsPanel
+          params={oceanParams}
+          onChange={handleOceanParamsChange}
+          onClose={() => setOceanPanelOpen(false)}
         />
       )}
 

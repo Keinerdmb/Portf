@@ -1,15 +1,17 @@
 import { useEffect, useRef } from 'react';
 import { ISLANDS } from '../../data/islands';
-import type { IslandId, ShipTelemetry } from '../../types/portfolio';
-import { getWindState } from '../../utils/oceanMath';
+import type { IslandId, OceanParams, ShipTelemetry } from '../../types/portfolio';
 
 interface CompassHudProps {
   shipTelemetryRef: React.RefObject<ShipTelemetry>;
+  oceanParamsRef: React.RefObject<OceanParams>;
   isFirstPerson: boolean;
   onToggleCamera: () => void;
   sfxEnabled: boolean;
   onToggleSfx: () => void;
   onOpenMap: () => void;
+  oceanPanelOpen: boolean;
+  onToggleOceanPanel: () => void;
   nearbyIsland: IslandId | null;
   onOpenIsland: (id: IslandId) => void;
   minigameActive: boolean;
@@ -21,11 +23,14 @@ interface CompassHudProps {
 
 export function CompassHud({
   shipTelemetryRef,
+  oceanParamsRef,
   isFirstPerson,
   onToggleCamera,
   sfxEnabled,
   onToggleSfx,
   onOpenMap,
+  oceanPanelOpen,
+  onToggleOceanPanel,
   nearbyIsland,
   onOpenIsland,
   minigameActive,
@@ -38,17 +43,14 @@ export function CompassHud({
   const windArrowRef = useRef<HTMLSpanElement>(null);
   const windKnotsRef = useRef<HTMLSpanElement>(null);
   const markerRefs = useRef<(HTMLDivElement | null)[]>([]);
-  const startTimeRef = useRef<number | null>(null);
 
   // Actualizamos brújula y viento directo en DOM vía rAF para cero re-renders
   useEffect(() => {
     let rafId = 0;
 
-    const tick = (now: number) => {
-      if (startTimeRef.current === null) startTimeRef.current = now;
-      const elapsedSec = (now - startTimeRef.current) / 1000;
+    const tick = () => {
       const ship = shipTelemetryRef.current;
-      const wind = getWindState(elapsedSec);
+      const params = oceanParamsRef.current;
 
       const deg = ((-ship.heading * 180) / Math.PI) % 360;
       const normalizedDeg = (deg + 360) % 360;
@@ -74,14 +76,13 @@ export function CompassHud({
       }
 
       if (windArrowRef.current) {
-        // Ángulo relativo del viento respecto a la proa del barco
-        const relWindDeg = ((ship.heading - wind.angle) * 180) / Math.PI;
+        const relWindDeg = ((ship.heading + params.currentAngle) * 180) / Math.PI;
         windArrowRef.current.style.transform = `rotate(${relWindDeg}deg)`;
       }
 
       if (windKnotsRef.current) {
         const boost = ship.windAlignment > 0.35 ? ' · VIENTO A FAVOR' : '';
-        windKnotsRef.current.textContent = `${Math.round(wind.knots)} KT${boost}`;
+        windKnotsRef.current.textContent = `${Math.round(params.windSpeed)} KT${boost}`;
       }
 
       ISLANDS.forEach((island, idx) => {
@@ -107,7 +108,7 @@ export function CompassHud({
 
     rafId = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(rafId);
-  }, [shipTelemetryRef]);
+  }, [shipTelemetryRef, oceanParamsRef]);
 
   const activeNearby = ISLANDS.find((i) => i.id === nearbyIsland);
 
@@ -197,6 +198,17 @@ export function CompassHud({
             className="cursor-pointer rounded border border-amber-300/50 bg-slate-950/65 px-3 py-1.5 font-mono text-xs text-amber-200 transition hover:bg-amber-300 hover:text-slate-950"
           >
             MAPA
+          </button>
+          <button
+            type="button"
+            onClick={onToggleOceanPanel}
+            className={`cursor-pointer rounded border px-3 py-1.5 font-mono text-xs transition ${
+              oceanPanelOpen
+                ? 'border-sky-300 bg-sky-400 text-slate-950'
+                : 'border-sky-300/45 bg-slate-950/65 text-sky-200 hover:border-sky-300'
+            }`}
+          >
+            OLAS / VIENTO
           </button>
           <button
             type="button"

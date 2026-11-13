@@ -2,11 +2,12 @@ import { useFrame } from '@react-three/fiber';
 import { useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { ISLANDS } from '../../data/islands';
-import type { IslandData, IslandId } from '../../types/portfolio';
-import { getWaveHeight } from '../../utils/oceanMath';
+import type { IslandData, IslandId, OceanParams } from '../../types/portfolio';
+import { sampleGerstnerSurface, stepBuoyantBody } from '../../utils/oceanMath';
 
 interface IslandsProps {
   nearbyIsland: IslandId | null;
+  oceanParamsRef: React.RefObject<OceanParams>;
   minigameActive: boolean;
   hitTargets: number[];
   onHitTarget: (idx: number) => void;
@@ -353,26 +354,34 @@ const TARGET_OFFSETS: [number, number][] = [
 function FloatingBarrel({
   baseX,
   baseZ,
-  phaseOffset,
+  oceanParamsRef,
   minigameActive,
   onHit,
 }: {
   baseX: number;
   baseZ: number;
-  phaseOffset: number;
+  oceanParamsRef: React.RefObject<OceanParams>;
   minigameActive: boolean;
   onHit: () => void;
 }) {
   const barrelRef = useRef<THREE.Group>(null);
+  const bodyRef = useRef({ y: 0.2, velY: 0 });
 
-  useFrame(({ clock }) => {
+  useFrame(({ clock }, rawDelta) => {
     const grp = barrelRef.current;
     if (!grp) return;
+    const dt = Math.min(rawDelta, 0.05);
     const t = clock.getElapsedTime();
-    const y = getWaveHeight(baseX, baseZ, t) + 0.35;
-    grp.position.set(baseX, y, baseZ);
-    grp.rotation.z = Math.sin(t * 2.1 + phaseOffset) * 0.14;
-    grp.rotation.x = Math.cos(t * 1.7 + phaseOffset) * 0.12;
+    const surface = sampleGerstnerSurface(baseX, baseZ, t, oceanParamsRef.current);
+
+    const next = stepBuoyantBody(bodyRef.current.y, bodyRef.current.velY, surface.height, dt, 30, 5.4, -0.2);
+    bodyRef.current.y = next.y;
+    bodyRef.current.velY = next.velY;
+
+    grp.position.set(baseX, next.y, baseZ);
+    // Inclinamos el cuerpo rígido siguiendo la normal de la ola Gerstner
+    grp.rotation.z = THREE.MathUtils.lerp(grp.rotation.z, -surface.normalX * 0.85, dt * 6);
+    grp.rotation.x = THREE.MathUtils.lerp(grp.rotation.x, surface.normalZ * 0.85, dt * 6);
   });
 
   return (
@@ -402,8 +411,58 @@ function FloatingBarrel({
   );
 }
 
+const HARBOR_BUOYS: [number, number][] = [
+  [8, -10],
+  [-11, -18],
+  [14, -24],
+];
+
+function BuoyantCrate({
+  baseX,
+  baseZ,
+  oceanParamsRef,
+}: {
+  baseX: number;
+  baseZ: number;
+  oceanParamsRef: React.RefObject<OceanParams>;
+}) {
+  const crateRef = useRef<THREE.Group>(null);
+  const bodyRef = useRef({ y: 0.1, velY: 0 });
+
+  useFrame(({ clock }, rawDelta) => {
+    const grp = crateRef.current;
+    if (!grp) return;
+    const dt = Math.min(rawDelta, 0.05);
+    const t = clock.getElapsedTime();
+    const surface = sampleGerstnerSurface(baseX, baseZ, t, oceanParamsRef.current);
+
+    const next = stepBuoyantBody(bodyRef.current.y, bodyRef.current.velY, surface.height, dt, 34, 5.6, -0.05);
+    bodyRef.current.y = next.y;
+    bodyRef.current.velY = next.velY;
+
+    grp.position.set(baseX, next.y, baseZ);
+    grp.rotation.z = THREE.MathUtils.lerp(grp.rotation.z, -surface.normalX * 0.95, dt * 7);
+    grp.rotation.x = THREE.MathUtils.lerp(grp.rotation.x, surface.normalZ * 0.95, dt * 7);
+    grp.rotation.y += dt * 0.25;
+  });
+
+  return (
+    <group ref={crateRef} position={[baseX, 0.1, baseZ]}>
+      <mesh>
+        <boxGeometry args={[1.35, 1.0, 1.35]} />
+        <meshStandardMaterial color="#a66f46" flatShading />
+      </mesh>
+      <mesh position={[0, 0.6, 0]}>
+        <cylinderGeometry args={[0.16, 0.2, 0.55, 6]} />
+        <meshStandardMaterial color="#f59e0b" flatShading />
+      </mesh>
+    </group>
+  );
+}
+
 export function Islands({
   nearbyIsland,
+  oceanParamsRef,
   minigameActive,
   hitTargets,
   onHitTarget,
@@ -422,6 +481,16 @@ export function Islands({
         />
       ))}
 
+      {/* Cajas/boyas rígidas flotantes frente al puerto para apreciar la flotabilidad */}
+      {HARBOR_BUOYS.map(([bx, bz], idx) => (
+        <BuoyantCrate
+          key={`crate-${idx}`}
+          baseX={bx}
+          baseZ={bz}
+          oceanParamsRef={oceanParamsRef}
+        />
+      ))}
+
       {skullIsland &&
         TARGET_OFFSETS.map(([ox, oz], idx) => {
           if (hitTargets.includes(idx)) return null;
@@ -430,7 +499,7 @@ export function Islands({
               key={idx}
               baseX={skullIsland.position[0] + ox}
               baseZ={skullIsland.position[1] + oz}
-              phaseOffset={idx * 1.5}
+              oceanParamsRef={oceanParamsRef}
               minigameActive={minigameActive}
               onHit={() => onHitTarget(idx)}
             />

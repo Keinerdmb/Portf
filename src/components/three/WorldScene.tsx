@@ -1,7 +1,12 @@
 import { Canvas, useFrame } from '@react-three/fiber';
 import { useRef } from 'react';
 import * as THREE from 'three';
-import type { GamePhase, IslandId, ShipTelemetry } from '../../types/portfolio';
+import type {
+  GamePhase,
+  IslandId,
+  OceanParams,
+  ShipTelemetry,
+} from '../../types/portfolio';
 import { CameraRig } from './CameraRig';
 import { HomeDock } from './HomeDock';
 import { Islands } from './Islands';
@@ -19,6 +24,7 @@ interface WorldSceneProps {
   onZoomModeChange: (isFirstPerson: boolean) => void;
   onBoarded: () => void;
   shipTelemetryRef: React.RefObject<ShipTelemetry>;
+  oceanParamsRef: React.RefObject<OceanParams>;
   nearbyIsland: IslandId | null;
   activeModalIsland: IslandId | null;
   onNearbyIslandChange: (islandId: IslandId | null) => void;
@@ -100,6 +106,7 @@ export function WorldScene({
   onZoomModeChange,
   onBoarded,
   shipTelemetryRef,
+  oceanParamsRef,
   nearbyIsland,
   activeModalIsland,
   onNearbyIslandChange,
@@ -135,10 +142,10 @@ export function WorldScene({
       <directionalLight position={[50, 24, 60]} intensity={0.6} color="#a5f3fc" />
 
       <SkyDome />
-      <Ocean shipPosRef={shipPosRef} />
+      <Ocean shipPosRef={shipPosRef} oceanParamsRef={oceanParamsRef} />
       <HomeDock />
-      <WindAndSkyLife shipPosRef={shipPosRef} />
-      <WakeTrail shipTelemetryRef={shipTelemetryRef} />
+      <WindAndSkyLife shipPosRef={shipPosRef} oceanParamsRef={oceanParamsRef} />
+      <WakeTrail shipTelemetryRef={shipTelemetryRef} oceanParamsRef={oceanParamsRef} />
 
       <BoardingActor
         phase={phase}
@@ -152,6 +159,7 @@ export function WorldScene({
         isFirstPerson={isFirstPerson}
         shipTelemetryRef={shipTelemetryRef}
         shipPosRef={shipPosRef}
+        oceanParamsRef={oceanParamsRef}
         activeModalIsland={activeModalIsland}
         onNearbyIslandChange={onNearbyIslandChange}
         onHullCollision={onHullCollision}
@@ -160,6 +168,7 @@ export function WorldScene({
 
       <Islands
         nearbyIsland={nearbyIsland}
+        oceanParamsRef={oceanParamsRef}
         minigameActive={minigameActive}
         hitTargets={hitTargets}
         onHitTarget={onHitTarget}

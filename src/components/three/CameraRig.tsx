@@ -2,7 +2,6 @@ import { useFrame, useThree } from '@react-three/fiber';
 import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import type { GamePhase, ShipTelemetry } from '../../types/portfolio';
-import { getWaveHeight } from '../../utils/oceanMath';
 
 interface CameraRigProps {
   phase: GamePhase;
@@ -102,9 +101,8 @@ export function CameraRig({
     }
   }, [cameraModeRequest]);
 
-  useFrame(({ clock }, rawDelta) => {
+  useFrame((_, rawDelta) => {
     const dt = Math.min(rawDelta, 0.05);
-    const t = clock.getElapsedTime();
 
     if (phase === 'title') {
       TEMP_TARGET_POS.set(-9.0, 4.1, 10.2);
@@ -161,7 +159,7 @@ export function CameraRig({
     const totalCamYaw = ship.heading + yawOffsetRef.current;
     const sinCam = Math.sin(totalCamYaw);
     const cosCam = Math.cos(totalCamYaw);
-    const waveOffset = getWaveHeight(ship.x, ship.z, t) * 0.7;
+    const waveOffset = ship.y * 0.7;
 
     // 1ra persona: posición fija detrás del timón, pero puedes girar la cabeza para mirar alrededor
     const fpPosX = ship.x + sinH * 2.15;

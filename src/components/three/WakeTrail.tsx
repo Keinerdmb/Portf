@@ -1,14 +1,15 @@
 import { useFrame } from '@react-three/fiber';
 import { useRef } from 'react';
 import * as THREE from 'three';
-import type { ShipTelemetry } from '../../types/portfolio';
-import { getWaveHeight } from '../../utils/oceanMath';
+import type { OceanParams, ShipTelemetry } from '../../types/portfolio';
+import { sampleGerstnerSurface } from '../../utils/oceanMath';
 
 interface WakeTrailProps {
   shipTelemetryRef: React.RefObject<ShipTelemetry>;
+  oceanParamsRef: React.RefObject<OceanParams>;
 }
 
-const FOAM_COUNT = 22;
+const FOAM_COUNT = 24;
 
 interface FoamNode {
   x: number;
@@ -17,7 +18,7 @@ interface FoamNode {
   life: number;
 }
 
-export function WakeTrail({ shipTelemetryRef }: WakeTrailProps) {
+export function WakeTrail({ shipTelemetryRef, oceanParamsRef }: WakeTrailProps) {
   const meshRefs = useRef<(THREE.Mesh | null)[]>([]);
   const nodesRef = useRef<FoamNode[]>(
     Array.from({ length: FOAM_COUNT }, () => ({ x: 0, z: 0, age: 10, life: 1 }))
@@ -29,11 +30,11 @@ export function WakeTrail({ shipTelemetryRef }: WakeTrailProps) {
     const dt = Math.min(rawDelta, 0.05);
     const t = clock.getElapsedTime();
     const ship = shipTelemetryRef.current;
+    const params = oceanParamsRef.current;
     const speedAbs = Math.abs(ship.speed);
 
-    // Emitimos espuma detrás de la popa proporcional a la velocidad
     if (speedAbs > 1.2) {
-      spawnAccumRef.current += dt * (4 + speedAbs * 0.45);
+      spawnAccumRef.current += dt * (4.5 + speedAbs * 0.45);
       while (spawnAccumRef.current >= 1) {
         spawnAccumRef.current -= 1;
         const idx = cursorRef.current % FOAM_COUNT;
@@ -48,7 +49,7 @@ export function WakeTrail({ shipTelemetryRef }: WakeTrailProps) {
           x: ship.x + sinH * sternDist + cosH * jitter,
           z: ship.z + cosH * sternDist - sinH * jitter,
           age: 0,
-          life: 1.3,
+          life: 1.35,
         };
       }
     }
@@ -65,14 +66,14 @@ export function WakeTrail({ shipTelemetryRef }: WakeTrailProps) {
       }
 
       const progress = node.age / node.life;
-      const y = getWaveHeight(node.x, node.z, t) + 0.06;
-      const scale = 0.55 + progress * 1.5;
+      const sample = sampleGerstnerSurface(node.x, node.z, t, params);
+      const scale = 0.55 + progress * 1.6;
 
       mesh.visible = true;
-      mesh.position.set(node.x, y, node.z);
+      mesh.position.set(node.x, sample.height + 0.08, node.z);
       mesh.scale.set(scale, 1, scale);
       const mat = mesh.material as THREE.MeshBasicMaterial;
-      mat.opacity = (1 - progress) * 0.58;
+      mat.opacity = (1 - progress) * 0.62;
     }
   });
 
@@ -88,7 +89,7 @@ export function WakeTrail({ shipTelemetryRef }: WakeTrailProps) {
           rotation={[-Math.PI / 2, 0, Math.PI / 4]}
         >
           <planeGeometry args={[0.9, 0.9]} />
-          <meshBasicMaterial color="#e0f7fa" transparent opacity={0.5} depthWrite={false} />
+          <meshBasicMaterial color="#effcf9" transparent opacity={0.5} depthWrite={false} />
         </mesh>
       ))}
     </group>
